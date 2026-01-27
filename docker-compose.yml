@@ -62,8 +62,8 @@ services:
     container_name: aquadetection_nginx
     restart: always
     ports:
-      - "0.0.0.0:8080:80"
-      - "0.0.0.0:8443:443"
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
     volumes:
       - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./infrastructure/nginx/conf.d:/etc/nginx/conf.d:ro
@@ -75,7 +75,8 @@ services:
     networks:
       - aquadetection_net
     environment:
-      - DOMAIN_NAME=aquadetection.local
+      - DOMAIN_NAME=${DOMAIN_NAME:-aquadetection.local}
+      - EMAIL=${EMAIL:-admin@aquadetection.local}
 
 networks:
   aquadetection_net:

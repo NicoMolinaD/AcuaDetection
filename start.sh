@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AcuaDetection startup script
+# AcuaDetection Production Startup Script
 
 set -e
 
@@ -31,138 +31,171 @@ log_warning() {
 # Banner
 echo -e "${BLUE}"
 echo "=========================================="
-echo "AcuaDetection - Startup"
+echo "    AcuaDetection - Production Deploy"
 echo "=========================================="
 echo -e "${NC}"
 
-# Step 1: Check Docker
-log_info "Checking Docker installation..."
-if ! command -v docker &> /dev/null; then
-    log_error "Docker no está instalado. Instálalo primero."
-    exit 1
-fi
+# ============ CONFIGURACIÓN ============
 
-if ! docker info >/dev/null 2>&1; then
-    log_error "Docker no está corriendo. Inicia con: systemctl start docker"
-    exit 1
-fi
-
-log_success "Docker está disponible"
-
-# Detect Detectar comando Docker
+# Detectar comando docker
 if docker ps >/dev/null 2>&1; then
     DOCKER_CMD="docker"
     log_success "Usando 'docker' sin sudo"
 else
     DOCKER_CMD="sudo docker"
-    log_warning "Usando 'sudo docker' (considera: usermod -aG docker usuario)"
+    log_warning "Usando 'sudo docker'"
 fi
 
-# Verify Verificar .env
-log_info "Verificando archivo .env..."
-if [ ! -f .env ]; then
-    log_warning ".env no existe. Creando desde .env.example..."
-    if [ -f .env.example ]; then
-        cp .env.example .env
-        log_success ".env creado desde template"
-    else
-        log_error ".env ni .env.example encontrados"
-        exit 1
-    fi
-else
+# Leer variables de .env o usar valores por defecto
+if [ -f .env ]; then
     log_success ".env existe"
+    set -a
+    source .env
+    set +a
 fi
 
-# Build Construir imágenes
-log_info "Construyendo imágenes Docker..."
-$DOCKER_CMD compose build --no-cache 2>&1 | grep -E "^(Step|Built|built|Successfully)" || true
+# Si DOMAIN_NAME no está configurado, preguntar
+if [ -z "$DOMAIN_NAME" ] || [ "$DOMAIN_NAME" = "aquadetection.local" ]; then
+    echo -e "\n${YELLOW}=== CONFIGURACIÓN REQUERIDA ===${NC}"
+    read -p "Ingresa tu dominio (ej: aquadetection.example.com): " DOMAIN_INPUT
+    if [ ! -z "$DOMAIN_INPUT" ]; then
+        DOMAIN_NAME="$DOMAIN_INPUT"
+        if [ -f .env ]; then
+            sed -i "s/DOMAIN_NAME=.*/DOMAIN_NAME=$DOMAIN_NAME/" .env
+        else
+            echo "DOMAIN_NAME=$DOMAIN_NAME" >> .env
+        fi
+        log_success "Dominio configurado: $DOMAIN_NAME"
+    fi
+fi
 
-if [ ${PIPESTATUS[0]} -eq 0 ]; then
-    log_success "Imágenes construidas exitosamente"
-else
-    log_error "Error construyendo imágenes"
+DOMAIN_NAME="${DOMAIN_NAME:-aquadetection.local}"
+EMAIL="${EMAIL:-admin@aquadetection.local}"
+
+echo -e "\n${BLUE}Configuración:${NC}"
+echo "  Dominio:  $DOMAIN_NAME"
+echo "  Email:    $EMAIL"
+echo ""
+
+# ============ PRE-INICIO ============
+
+log_info "Verificando Docker..."
+if ! command -v docker &> /dev/null; then
+    log_error "Docker no está instalado"
     exit 1
 fi
 
-# Start Iniciar contenedores
-log_info "Iniciando contenedores (Nginx, Frontend, Backend, PostgreSQL)..."
-$DOCKER_CMD compose up -d
-
-log_success "Contenedores iniciados"
-
-# Wait Esperar a que PostgreSQL esté listo
-log_info "Esperando a que PostgreSQL esté disponible..."
-for i in {1..30}; do
-    if $DOCKER_CMD compose exec -T db pg_isready -U aquadetection >/dev/null 2>&1; then
-        log_success "PostgreSQL está disponible"
-        break
-    fi
-    echo -ne "  Intento $i/30...\r"
-    sleep 1
-done
-
-# Wait Esperar a que Nginx esté listo y certificados generados
-log_info "Esperando a que Backend esté listo..."
-for i in {1..30}; do
-    if $DOCKER_CMD compose exec -T backend curl -s http://localhost:8000/health >/dev/null 2>&1; then
-        log_success "Backend está respondiendo"
-        break
-    fi
-    echo -ne "  Intento $i/30...\r"
-    sleep 1
-done
-
-log_info "Esperando a que Nginx esté listo..."
-for i in {1..30}; do
-    if $DOCKER_CMD compose exec -T nginx test -f /etc/nginx/nginx.conf 2>/dev/null; then
-        log_success "Nginx está activo"
-        break
-    fi
-    echo -ne "  Intento $i/30...\r"
-    sleep 1
-done
-
-# Get IPs
-PUBLIC_IP=$(hostname -I | awk '{print $1}')
-DOMAIN="aquadetection.local"
-
-# Check Verificar estado de todos los servicios
-log_info "Verificando estado de servicios..."
-SERVICE_STATUS=$($DOCKER_CMD compose ps)
-if echo "$SERVICE_STATUS" | grep -q "running"; then
-    log_success "Servicios en estado 'running'"
-else
-    log_warning "Algunos servicios podrían no estar listos"
+if ! $DOCKER_CMD info >/dev/null 2>&1; then
+    log_error "Docker daemon no está corriendo"
+    exit 1
 fi
 
-# Display Información final
-echo -e "\n${GREEN}========== SISTEMA INICIADO CORRECTAMENTE ==========${NC}\n"
+log_success "Docker disponible"
 
-echo "Acceso a AcuaDetection:"
-echo -e "  HTTP (localhost):    ${GREEN}http://localhost:8080${NC}"
-echo -e "  HTTPS (IP):          ${GREEN}https://$PUBLIC_IP:8443${NC}"
-echo -e "  HTTPS (Dominio):     ${GREEN}https://$DOMAIN:8443${NC}"
-echo -e "  API Backend:         ${GREEN}http://localhost:8080/api/v1${NC}"
+# ============ CONSTRUIR Y INICIAR ============
+
+log_info "Construyendo imágenes Docker..."
+$DOCKER_CMD compose build --no-cache 2>&1 | tail -5
+log_success "Imágenes construidas"
+
+log_info "Iniciando contenedores..."
+DOMAIN_NAME="$DOMAIN_NAME" EMAIL="$EMAIL" $DOCKER_CMD compose up -d
+log_success "Contenedores iniciados"
+
+# ============ VERIFICACIONES ============
+
+log_info "Verificando servicios..."
+
+# PostgreSQL
+echo -n "  PostgreSQL: "
+for i in {1..30}; do
+    if $DOCKER_CMD compose exec -T db pg_isready -U aquadetection >/dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+        break
+    fi
+    [ $i -eq 30 ] && echo -e "${RED}✗${NC}" || echo -n "."
+    sleep 1
+done
+
+# Backend
+echo -n "  Backend: "
+for i in {1..30}; do
+    if $DOCKER_CMD compose exec -T backend curl -s http://localhost:8000/health >/dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+        break
+    fi
+    [ $i -eq 30 ] && echo -e "${RED}✗${NC}" || echo -n "."
+    sleep 1
+done
+
+# Frontend
+echo -n "  Frontend: "
+for i in {1..10}; do
+    if $DOCKER_CMD compose exec -T frontend test -f /usr/share/nginx/html/index.html 2>/dev/null; then
+        echo -e "${GREEN}✓${NC}"
+        break
+    fi
+    [ $i -eq 10 ] && echo -e "${RED}✗${NC}" || echo -n "."
+    sleep 1
+done
+
+# Nginx
+echo -n "  Nginx: "
+for i in {1..10}; do
+    if $DOCKER_CMD compose exec -T nginx test -f /etc/nginx/nginx.conf 2>/dev/null; then
+        echo -e "${GREEN}✓${NC}"
+        break
+    fi
+    [ $i -eq 10 ] && echo -e "${RED}✗${NC}" || echo -n "."
+    sleep 1
+done
+
+# Obtener IPs
+PUBLIC_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "YOUR_IP")
+
+# ============ INFORMACIÓN FINAL ============
+
 echo ""
-echo "Puertos mapeados:"
-echo -e "  HTTP:  ${GREEN}0.0.0.0:8080 -> nginx:80${NC}"
-echo -e "  HTTPS: ${GREEN}0.0.0.0:8443 -> nginx:443${NC}"
+echo -e "${GREEN}========== SISTEMA INICIADO CORRECTAMENTE ==========${NC}"
 echo ""
-echo "Comandos útiles:"
-echo -e "  Ver todos los logs:  ${BLUE}docker compose logs -f${NC}"
-echo -e "  Ver logs backend:    ${BLUE}docker compose logs -f backend${NC}"
-echo -e "  Ver logs nginx:      ${BLUE}docker compose logs -f nginx${NC}"
-echo -e "  Ver logs postgres:   ${BLUE}docker compose logs -f db${NC}"
-echo -e "  Estado servicios:    ${BLUE}docker compose ps${NC}"
-echo -e "  Detener sistema:     ${BLUE}./stop.sh${NC}"
+
+echo -e "${BLUE}URLs de acceso:${NC}"
+echo -e "  Producción:   ${GREEN}https://$DOMAIN_NAME${NC}"
+echo -e "  IP Pública:   ${GREEN}https://$PUBLIC_IP${NC}"
+echo -e "  Local (HTTP): ${BLUE}http://localhost${NC}"
 echo ""
-echo -e "Credenciales por defecto:"
-echo -e "  Admin:  ${GREEN}admin${NC}  / ${GREEN}admin123${NC}"
-echo -e "  User:   ${GREEN}user${NC}   / ${GREEN}user123${NC}"
+
+echo -e "${BLUE}APIs:${NC}"
+echo -e "  Swagger:  ${GREEN}https://$DOMAIN_NAME/api/v1/docs${NC}"
+echo -e "  ReDoc:    ${GREEN}https://$DOMAIN_NAME/api/v1/redoc${NC}"
+echo -e "  Health:   ${GREEN}https://$DOMAIN_NAME/health${NC}"
 echo ""
-echo -e "${YELLOW}NOTA: Los certificados SSL son autofirmados en desarrollo.${NC}"
-echo -e "${YELLOW}      En producción, configura Let's Encrypt en infrastructure/nginx/init_certbot.sh${NC}"
+
+echo -e "${BLUE}Puertos expuestos:${NC}"
+echo -e "  HTTP  (80):   0.0.0.0:80"
+echo -e "  HTTPS (443):  0.0.0.0:443"
 echo ""
+
+echo -e "${BLUE}Credenciales por defecto:${NC}"
+echo -e "  Admin: ${GREEN}admin${NC} / ${GREEN}admin123${NC}"
+echo -e "  User:  ${GREEN}user${NC} / ${GREEN}user123${NC}"
+echo ""
+
+echo -e "${BLUE}Comandos útiles:${NC}"
+echo -e "  Ver logs:      ${BLUE}docker compose logs -f${NC}"
+echo -e "  Ver logs nginx: ${BLUE}docker compose logs -f nginx${NC}"
+echo -e "  Estado:        ${BLUE}docker compose ps${NC}"
+echo -e "  Detener:       ${BLUE}./stop.sh${NC}"
+echo ""
+
 echo -e "${GREEN}================================================${NC}"
-echo -e "${GREEN}Sistema AcuaDetection listo para usar${NC}"
-echo -e "${GREEN}================================================${NC}\n"
+echo -e "${GREEN}Sistema listo para usar${NC}"
+echo -e "${GREEN}================================================${NC}"
+echo ""
+
+# Inicializar BD si es primera vez
+if ! $DOCKER_CMD compose exec -T db psql -U aquadetection -d aquadetection_db -c "SELECT 1 FROM pg_tables WHERE tablename='user';" >/dev/null 2>&1; then
+    log_info "Inicializando base de datos..."
+    $DOCKER_CMD compose exec backend python init_db.py
+    log_success "Base de datos inicializada"
+fi
