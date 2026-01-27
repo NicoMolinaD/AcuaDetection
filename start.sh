@@ -93,7 +93,7 @@ log_success "Contenedores iniciados"
 # Wait Esperar a que PostgreSQL esté listo
 log_info "Esperando a que PostgreSQL esté disponible..."
 for i in {1..30}; do
-    if $DOCKER_CMD compose exec -T db pg_isready -U aquadetection_user >/dev/null 2>&1; then
+    if $DOCKER_CMD compose exec -T db pg_isready -U aquadetection >/dev/null 2>&1; then
         log_success "PostgreSQL está disponible"
         break
     fi
@@ -102,26 +102,29 @@ for i in {1..30}; do
 done
 
 # Wait Esperar a que Nginx esté listo y certificados generados
-log_info "Esperando a que Nginx y certificados estén listos..."
-for i in {1..60}; do
-    if $DOCKER_CMD compose exec -T nginx test -f /etc/letsencrypt/live/aquadetection.local/fullchain.pem 2>/dev/null; then
-        log_success "Certificados SSL/TLS generados"
+log_info "Esperando a que Backend esté listo..."
+for i in {1..30}; do
+    if $DOCKER_CMD compose exec -T backend curl -s http://localhost:8000/health >/dev/null 2>&1; then
+        log_success "Backend está respondiendo"
         break
     fi
-    echo -ne "  Generando certificados... $i/60\r"
+    echo -ne "  Intento $i/30...\r"
     sleep 1
 done
 
-# Check Verificar que Nginx está respondiendo
-log_info "Verificando que Nginx está respondiendo..."
-for i in {1..15}; do
-    if $DOCKER_CMD compose exec -T nginx curl -s https://localhost/api/v1 >/dev/null 2>&1; then
-        log_success "Nginx está respondiendo correctamente"
+log_info "Esperando a que Nginx esté listo..."
+for i in {1..30}; do
+    if $DOCKER_CMD compose exec -T nginx test -f /etc/nginx/nginx.conf 2>/dev/null; then
+        log_success "Nginx está activo"
         break
     fi
-    echo -ne "  Intento $i/15...\r"
+    echo -ne "  Intento $i/30...\r"
     sleep 1
 done
+
+# Get IPs
+PUBLIC_IP=$(hostname -I | awk '{print $1}')
+DOMAIN="aquadetection.local"
 
 # Check Verificar estado de todos los servicios
 log_info "Verificando estado de servicios..."
@@ -136,28 +139,29 @@ fi
 echo -e "\n${GREEN}========== SISTEMA INICIADO CORRECTAMENTE ==========${NC}\n"
 
 echo "Acceso a AcuaDetection:"
-echo -e "  HTTPS (Dominio):    ${GREEN}https://aquadetection.local${NC}"
-echo -e "  HTTPS (IP):         ${GREEN}https://10.3.11.101${NC}"
-echo -e "  API Docs (Swagger): ${GREEN}https://aquadetection.local/api/v1/docs${NC}"
-echo -e "  API ReDoc:          ${GREEN}https://aquadetection.local/api/v1/redoc${NC}"
+echo -e "  HTTP (localhost):    ${GREEN}http://localhost:8080${NC}"
+echo -e "  HTTPS (IP):          ${GREEN}https://$PUBLIC_IP:8443${NC}"
+echo -e "  HTTPS (Dominio):     ${GREEN}https://$DOMAIN:8443${NC}"
+echo -e "  API Backend:         ${GREEN}http://localhost:8080/api/v1${NC}"
 echo ""
-echo "Puertos internos (solo Docker):"
-echo -e "  Frontend:  ${GREEN}http://localhost:3000${NC}"
-echo -e "  Backend:   ${GREEN}http://localhost:8000${NC}"
-echo -e "  Database:  ${GREEN}127.0.0.1:5433${NC}"
+echo "Puertos mapeados:"
+echo -e "  HTTP:  ${GREEN}0.0.0.0:8080 -> nginx:80${NC}"
+echo -e "  HTTPS: ${GREEN}0.0.0.0:8443 -> nginx:443${NC}"
 echo ""
 echo "Comandos útiles:"
-echo -e "  Ver logs:              ${BLUE}docker-compose logs -f${NC}"
-echo -e "  Ver logs Nginx:        ${BLUE}docker-compose logs -f nginx${NC}"
-echo -e "  Estado servicios:      ${BLUE}docker-compose ps${NC}"
-echo -e "  Detener sistema:       ${BLUE}./stop.sh${NC}"
-echo ""
-echo -e "${YELLOW}NOTA: El primer acceso mostrará advertencia SSL (certificado autofirmado).${NC}"
-echo -e "${YELLOW}      Acepta continuar. Para producción, usa Let's Encrypt.${NC}"
+echo -e "  Ver todos los logs:  ${BLUE}docker compose logs -f${NC}"
+echo -e "  Ver logs backend:    ${BLUE}docker compose logs -f backend${NC}"
+echo -e "  Ver logs nginx:      ${BLUE}docker compose logs -f nginx${NC}"
+echo -e "  Ver logs postgres:   ${BLUE}docker compose logs -f db${NC}"
+echo -e "  Estado servicios:    ${BLUE}docker compose ps${NC}"
+echo -e "  Detener sistema:     ${BLUE}./stop.sh${NC}"
 echo ""
 echo -e "Credenciales por defecto:"
-echo -e "  Usuario: ${GREEN}admin${NC}  |  Contraseña: ${GREEN}admin123${NC}"
-echo -e "  Usuario: ${GREEN}user${NC}   |  Contraseña: ${GREEN}user123${NC}"
+echo -e "  Admin:  ${GREEN}admin${NC}  / ${GREEN}admin123${NC}"
+echo -e "  User:   ${GREEN}user${NC}   / ${GREEN}user123${NC}"
+echo ""
+echo -e "${YELLOW}NOTA: Los certificados SSL son autofirmados en desarrollo.${NC}"
+echo -e "${YELLOW}      En producción, configura Let's Encrypt en infrastructure/nginx/init_certbot.sh${NC}"
 echo ""
 echo -e "${GREEN}================================================${NC}"
 echo -e "${GREEN}Sistema AcuaDetection listo para usar${NC}"

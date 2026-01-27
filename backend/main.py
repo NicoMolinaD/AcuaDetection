@@ -33,4 +33,9 @@ async def malcom_exception_handler(request: Request, exc: MalcomException):
 def root():
     return {"message": "Malcom API is running", "env": settings.PROJECT_NAME}
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint for load balancers and orchestration platforms"""
+    return {"status": "healthy"}
+
 app.include_router(api_router, prefix=settings.API_V1_STR)
