@@ -86,6 +86,10 @@ EOF
     fi
 fi
 
+# Update nginx.conf with the correct domain
+echo "[INFO] Configurando Nginx para $DOMAIN_NAME..."
+sed -i "s|/etc/letsencrypt/live/aquadetection.local|/etc/letsencrypt/live/$DOMAIN_NAME|g" /etc/nginx/nginx.conf
+
 echo "[OK] Certificados listos"
 echo "=========================================="
 echo "Iniciando Nginx..."
