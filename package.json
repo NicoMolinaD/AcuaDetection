@@ -1,0 +1,12 @@
+{
+    "name": "malware-dashboard-root",
+    "version": "1.0.0",
+    "description": "Root orchestration for Malware Dashboard",
+    "scripts": {
+        "build": "npm run build --prefix frontend",
+        "dev": "npm run dev --prefix frontend",
+        "lint": "npm run lint --prefix frontend",
+        "install-all": "npm install --prefix frontend"
+    },
+    "private": true
+}

@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=aquadetection
+      - POSTGRES_PASSWORD=aquadetection_secure_pass
+      - POSTGRES_DB=aquadetection_db
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - aquadetection_net
+
+  backend:
+    build: 
+      context: ./backend
+    container_name: aquadetection_backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://aquadetection:aquadetection_secure_pass@db:5432/aquadetection_db
+      - SECRET_KEY=change_this_to_a_secure_random_key
+    env_file:
+      - ./backend/.env
+    expose:
+      - "8000"
+    depends_on:
+      - db
+    networks:
+      - aquadetection_net
+
+  frontend:
+    build: 
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    container_name: aquadetection_frontend
+    restart: always
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    networks:
+      - aquadetection_net
+
+  nginx:
+    build:
+      context: ./infrastructure/nginx
+      dockerfile: Dockerfile
+    container_name: aquadetection_nginx
+    restart: always
+    ports:
+      - "0.0.0.0:8080:80"
+      - "0.0.0.0:8443:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot_data:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - aquadetection_net
+    environment:
+      - DOMAIN_NAME=aquadetection.local
+
+networks:
+  aquadetection_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  certbot_data:
+  certbot_www:
