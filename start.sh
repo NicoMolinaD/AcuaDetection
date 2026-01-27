@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AcuaDetection Production Startup Script
+# AcuaDetection Startup Script - Servidor Privado Local
 
 set -e
 
@@ -31,11 +31,9 @@ log_warning() {
 # Banner
 echo -e "${BLUE}"
 echo "=========================================="
-echo "    AcuaDetection - Production Deploy"
+echo "    AcuaDetection - Servidor Local"
 echo "=========================================="
 echo -e "${NC}"
-
-# ============ CONFIGURACIÓN ============
 
 # Detectar comando docker
 if docker ps >/dev/null 2>&1; then
@@ -46,39 +44,14 @@ else
     log_warning "Usando 'sudo docker'"
 fi
 
-# Leer variables de .env o usar valores por defecto
+# Verificar .env
 if [ -f .env ]; then
     log_success ".env existe"
-    set -a
-    source .env
-    set +a
+else
+    log_warning ".env no existe, usando configuración por defecto"
 fi
 
-# Si DOMAIN_NAME no está configurado, preguntar
-if [ -z "$DOMAIN_NAME" ] || [ "$DOMAIN_NAME" = "aquadetection.local" ]; then
-    echo -e "\n${YELLOW}=== CONFIGURACIÓN REQUERIDA ===${NC}"
-    read -p "Ingresa tu dominio (ej: aquadetection.example.com): " DOMAIN_INPUT
-    if [ ! -z "$DOMAIN_INPUT" ]; then
-        DOMAIN_NAME="$DOMAIN_INPUT"
-        if [ -f .env ]; then
-            sed -i "s/DOMAIN_NAME=.*/DOMAIN_NAME=$DOMAIN_NAME/" .env
-        else
-            echo "DOMAIN_NAME=$DOMAIN_NAME" >> .env
-        fi
-        log_success "Dominio configurado: $DOMAIN_NAME"
-    fi
-fi
-
-DOMAIN_NAME="${DOMAIN_NAME:-aquadetection.local}"
-EMAIL="${EMAIL:-admin@aquadetection.local}"
-
-echo -e "\n${BLUE}Configuración:${NC}"
-echo "  Dominio:  $DOMAIN_NAME"
-echo "  Email:    $EMAIL"
-echo ""
-
-# ============ PRE-INICIO ============
-
+# Verificar Docker
 log_info "Verificando Docker..."
 if ! command -v docker &> /dev/null; then
     log_error "Docker no está instalado"
@@ -92,21 +65,19 @@ fi
 
 log_success "Docker disponible"
 
-# ============ CONSTRUIR Y INICIAR ============
-
+# Construir imágenes
 log_info "Construyendo imágenes Docker..."
 $DOCKER_CMD compose build --no-cache 2>&1 | tail -5
 log_success "Imágenes construidas"
 
+# Iniciar contenedores
 log_info "Iniciando contenedores..."
-DOMAIN_NAME="$DOMAIN_NAME" EMAIL="$EMAIL" $DOCKER_CMD compose up -d
+$DOCKER_CMD compose up -d
 log_success "Contenedores iniciados"
 
-# ============ VERIFICACIONES ============
-
+# Verificar servicios
 log_info "Verificando servicios..."
 
-# PostgreSQL
 echo -n "  PostgreSQL: "
 for i in {1..30}; do
     if $DOCKER_CMD compose exec -T db pg_isready -U aquadetection >/dev/null 2>&1; then
@@ -117,7 +88,6 @@ for i in {1..30}; do
     sleep 1
 done
 
-# Backend
 echo -n "  Backend: "
 for i in {1..30}; do
     if $DOCKER_CMD compose exec -T backend curl -s http://localhost:8000/health >/dev/null 2>&1; then
@@ -128,7 +98,6 @@ for i in {1..30}; do
     sleep 1
 done
 
-# Frontend
 echo -n "  Frontend: "
 for i in {1..10}; do
     if $DOCKER_CMD compose exec -T frontend test -f /usr/share/nginx/html/index.html 2>/dev/null; then
@@ -139,7 +108,6 @@ for i in {1..10}; do
     sleep 1
 done
 
-# Nginx
 echo -n "  Nginx: "
 for i in {1..10}; do
     if $DOCKER_CMD compose exec -T nginx test -f /etc/nginx/nginx.conf 2>/dev/null; then
@@ -150,30 +118,29 @@ for i in {1..10}; do
     sleep 1
 done
 
-# Obtener IPs
-PUBLIC_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "YOUR_IP")
+# Obtener IP
+LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "10.3.11.101")
 
-# ============ INFORMACIÓN FINAL ============
-
+# Información final
 echo ""
 echo -e "${GREEN}========== SISTEMA INICIADO CORRECTAMENTE ==========${NC}"
 echo ""
 
-echo -e "${BLUE}URLs de acceso:${NC}"
-echo -e "  Producción:   ${GREEN}https://$DOMAIN_NAME${NC}"
-echo -e "  IP Pública:   ${GREEN}https://$PUBLIC_IP${NC}"
-echo -e "  Local (HTTP): ${BLUE}http://localhost${NC}"
+echo -e "${BLUE}Acceso (Red Privada Local):${NC}"
+echo -e "  HTTP:   ${GREEN}http://$LOCAL_IP:8080${NC}"
+echo -e "  HTTPS:  ${GREEN}https://$LOCAL_IP:8443${NC}"
 echo ""
 
-echo -e "${BLUE}APIs:${NC}"
-echo -e "  Swagger:  ${GREEN}https://$DOMAIN_NAME/api/v1/docs${NC}"
-echo -e "  ReDoc:    ${GREEN}https://$DOMAIN_NAME/api/v1/redoc${NC}"
-echo -e "  Health:   ${GREEN}https://$DOMAIN_NAME/health${NC}"
+echo -e "${BLUE}URLs de Aplicación:${NC}"
+echo -e "  UI:      ${GREEN}https://$LOCAL_IP:8443${NC}"
+echo -e "  API:     ${GREEN}https://$LOCAL_IP:8443/api/v1${NC}"
+echo -e "  Docs:    ${GREEN}https://$LOCAL_IP:8443/api/v1/docs${NC}"
+echo -e "  Health:  ${GREEN}https://$LOCAL_IP:8443/health${NC}"
 echo ""
 
-echo -e "${BLUE}Puertos expuestos:${NC}"
-echo -e "  HTTP  (80):   0.0.0.0:80"
-echo -e "  HTTPS (443):  0.0.0.0:443"
+echo -e "${BLUE}Puertos Expuestos:${NC}"
+echo -e "  HTTP (8080):  0.0.0.0:8080"
+echo -e "  HTTPS (8443): 0.0.0.0:8443"
 echo ""
 
 echo -e "${BLUE}Credenciales por defecto:${NC}"
@@ -188,8 +155,12 @@ echo -e "  Estado:        ${BLUE}docker compose ps${NC}"
 echo -e "  Detener:       ${BLUE}./stop.sh${NC}"
 echo ""
 
+echo -e "${YELLOW}NOTA: Certificados autofirmados para red privada${NC}"
+echo -e "${YELLOW}      Se aceptará advertencia de seguridad en navegador${NC}"
+echo ""
+
 echo -e "${GREEN}================================================${NC}"
-echo -e "${GREEN}Sistema listo para usar${NC}"
+echo -e "${GREEN}Sistema listo para usar (Red Privada)${NC}"
 echo -e "${GREEN}================================================${NC}"
 echo ""
 
