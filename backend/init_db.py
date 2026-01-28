@@ -7,16 +7,20 @@ Run this after starting the containers for the first time.
 import sys
 sys.path.insert(0, '/app')
 
-from app.core.database import engine, SessionLocal
-from app.models import user, ransomware, audit_log
+from app.core.database import engine, Base, SessionLocal
 from app.core import security
 
-# Create all tables
+# Import all models to register them
+from app.models import user, ransomware, audit_log
+
+# Create all tables at once
 print("Creating database tables...")
-user.User.metadata.create_all(bind=engine)
-ransomware.Ransomware.metadata.create_all(bind=engine)
-audit_log.AuditLog.metadata.create_all(bind=engine)
-print("Tables created successfully")
+try:
+    Base.metadata.create_all(bind=engine)
+    print("✓ Tables created successfully")
+except Exception as e:
+    print(f"✗ Error creating tables: {e}")
+    sys.exit(1)
 
 # Create default admin user
 db = SessionLocal()
@@ -24,7 +28,7 @@ try:
     # Check if admin already exists
     existing_admin = db.query(user.User).filter(user.User.username == "admin").first()
     if existing_admin:
-        print("Admin user already exists")
+        print("✓ Admin user already exists")
     else:
         admin_user = user.User(
             username="admin",
@@ -33,7 +37,7 @@ try:
         )
         db.add(admin_user)
         db.commit()
-        print("Admin user created successfully")
+        print("✓ Admin user created successfully")
         print("   Username: admin")
         print("   Password: admin123")
         print("   IMPORTANT: Change this password after first login!")
@@ -48,11 +52,12 @@ try:
         )
         db.add(regular_user)
         db.commit()
-        print("   Regular user created successfully")
+        print("✓ Regular user created successfully")
         print("   Username: user")
         print("   Password: user123")
     
 finally:
     db.close()
 
-print("\n  Database initialization complete!")
+print("\n✓ Database initialization complete!")
+
