@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8 # 8 days
     
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://malcom:malcom_secure_pass@db:5432/malcom_db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://aquadetection:aquadetection_secure_pass@db:5432/aquadetection_db")
     DB_ENCRYPTION_KEY: str = os.getenv("DB_ENCRYPTION_KEY", "YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=")
 
     # External APIs

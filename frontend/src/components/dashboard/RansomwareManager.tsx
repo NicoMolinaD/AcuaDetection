@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getRansomwareList, addRansomware, updateRansomware, deleteRansomware } from '../../services/api';
-import { Plus, Database, ShieldAlert, X, Search, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Database, X, Search, Edit2, Trash2 } from 'lucide-react';
 
 export const RansomwareManager: React.FC = () => {
     const [ransomwareList, setRansomwareList] = useState<any[]>([]);
