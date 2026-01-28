@@ -52,7 +52,10 @@ class RansomwareResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
-    hashes: List[str]
+    hashes: dict = {}
+    ips: List[str] = []
+    domains: List[str] = []
+    severity: str = "High"
     timestamp: datetime
 
     class Config:
@@ -61,4 +64,24 @@ class RansomwareResponse(BaseModel):
 class RansomwareCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    hashes: List[str] = []
+    hashes: dict = {}
+    ips: List[str] = []
+    domains: List[str] = []
+    severity: str = "High"
+
+class RansomwareUpdate(BaseModel):
+    description: Optional[str] = None
+    hashes: Optional[dict] = None
+    ips: Optional[List[str]] = None
+    domains: Optional[List[str]] = None
+    severity: Optional[str] = None
+    
+    def is_valid(self):
+        """Check if at least one field is being updated"""
+        return any([
+            self.description is not None,
+            self.hashes is not None,
+            self.ips is not None,
+            self.domains is not None,
+            self.severity is not None
+        ])

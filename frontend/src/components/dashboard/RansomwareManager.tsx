@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getRansomwareList, addRansomware } from '../../services/api';
-import { Plus, Database, ShieldAlert, X, Search } from 'lucide-react';
+import { getRansomwareList, addRansomware, updateRansomware, deleteRansomware } from '../../services/api';
+import { Plus, Database, ShieldAlert, X, Search, Edit2, Trash2 } from 'lucide-react';
 
 export const RansomwareManager: React.FC = () => {
     const [ransomwareList, setRansomwareList] = useState<any[]>([]);
@@ -8,6 +8,9 @@ export const RansomwareManager: React.FC = () => {
     const [searchFilter, setSearchFilter] = useState('');
 
     const [showForm, setShowForm] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    
     const [newName, setNewName] = useState('');
     const [newDescription, setNewDescription] = useState('');
     const [newMD5, setNewMD5] = useState('');
@@ -16,6 +19,7 @@ export const RansomwareManager: React.FC = () => {
     const [newIPs, setNewIPs] = useState<string[]>(['']);
     const [newDomains, setNewDomains] = useState('');
     const [formError, setFormError] = useState('');
+    const [formSuccess, setFormSuccess] = useState('');
 
     useEffect(() => {
         loadData();
@@ -42,16 +46,50 @@ export const RansomwareManager: React.FC = () => {
             return false;
         }
 
-        // Check if at least one hash or domain exists
+        // Check if at least one hash, IP or domain exists
         const hasHashes = newMD5.trim() || newSHA1.trim() || newSHA256.trim();
+        const hasIPs = newIPs.some(ip => ip.trim());
         const hasDomains = newDomains.trim();
 
-        if (!hasHashes && !hasDomains) {
-            setFormError('Debes proporcionar al menos un hash o un dominio');
+        if (!hasHashes && !hasIPs && !hasDomains) {
+            setFormError('Debes proporcionar al menos un hash, IP o dominio');
             return false;
         }
 
         return true;
+    };
+
+    const resetForm = () => {
+        setNewName('');
+        setNewDescription('');
+        setNewMD5('');
+        setNewSHA1('');
+        setNewSHA256('');
+        setNewIPs(['']);
+        setNewDomains('');
+        setFormError('');
+        setFormSuccess('');
+        setIsEditing(false);
+        setEditingId(null);
+        setShowForm(false);
+    };
+
+    const handleEdit = (item: any) => {
+        setEditingId(item.id);
+        setIsEditing(true);
+        setNewName(item.name);
+        setNewDescription(item.description || '');
+        
+        // Parse hashes
+        if (item.hashes) {
+            setNewMD5(item.hashes.md5?.[0] || '');
+            setNewSHA1(item.hashes.sha1?.[0] || '');
+            setNewSHA256(item.hashes.sha256?.[0] || '');
+        }
+        
+        setNewIPs(item.ips && item.ips.length > 0 ? item.ips : ['']);
+        setNewDomains(item.domains?.join(', ') || '');
+        setShowForm(true);
     };
 
     const handleAdd = async (e: React.FormEvent) => {
@@ -68,26 +106,52 @@ export const RansomwareManager: React.FC = () => {
             const ips = newIPs.filter(ip => ip.trim());
             const domains = newDomains.split(',').map(d => d.trim()).filter(Boolean);
 
-            await addRansomware({
-                name: newName,
-                description: newDescription,
-                hashes: hashesObj,
-                ips: ips,
-                domains: domains
-            });
+            if (isEditing && editingId) {
+                // Update existing
+                await updateRansomware(editingId, {
+                    description: newDescription,
+                    hashes: hashesObj,
+                    ips: ips,
+                    domains: domains
+                });
+                setFormSuccess('Registro actualizado correctamente');
+            } else {
+                // Create new
+                await addRansomware({
+                    name: newName,
+                    description: newDescription,
+                    hashes: hashesObj,
+                    ips: ips,
+                    domains: domains
+                });
+                setFormSuccess('Registro creado correctamente');
+            }
             
-            setNewName('');
-            setNewDescription('');
-            setNewMD5('');
-            setNewSHA1('');
-            setNewSHA256('');
-            setNewIPs(['']);
-            setNewDomains('');
-            setFormError('');
-            setShowForm(false);
-            loadData();
-        } catch (e) {
-            setFormError('Error al crear el registro de ransomware');
+            setTimeout(() => {
+                resetForm();
+                loadData();
+            }, 1500);
+        } catch (e: any) {
+            if (e.response?.status === 409) {
+                setFormError('Ya existe un registro de ransomware con este nombre');
+            } else {
+                setFormError(`Error: ${isEditing ? 'al actualizar' : 'al crear'} el registro de ransomware`);
+            }
+        }
+    };
+
+    const handleDelete = async (id: number, name: string) => {
+        if (window.confirm(`¿Estás seguro de que quieres eliminar a ${name}?`)) {
+            try {
+                await deleteRansomware(id);
+                setFormSuccess('Registro eliminado correctamente');
+                setTimeout(() => {
+                    setFormSuccess('');
+                    loadData();
+                }, 1500);
+            } catch (e) {
+                setFormError('Error al eliminar el registro');
+            }
         }
     };
 
@@ -107,19 +171,25 @@ export const RansomwareManager: React.FC = () => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-100 flex items-center gap-2">
-                    <Database className="text-emerald-500" />
-                    BBDD de Ransomware
-                </h2>
-                <button
-                    onClick={() => setShowForm(!showForm)}
-                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/20 font-bold"
-                >
-                    <Plus size={18} />
-                    Añadir Registro
-                </button>
-            </header>
+            <div>
+                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-100 flex items-center gap-2">
+                        <Database className="text-emerald-500" />
+                        BBDD de Ransomware
+                    </h2>
+                    <button
+                        onClick={() => {
+                            if (!isEditing) resetForm();
+                            setShowForm(!showForm);
+                        }}
+                        className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/20 font-bold"
+                    >
+                        <Plus size={18} />
+                        Añadir Registro
+                    </button>
+                </header>
+                <p className="text-gray-500 text-sm">Gestiona y almacena información de familias de ransomware, incluyendo hashes, IPs y dominios maliciosos para la detección local.</p>
+            </div>
 
             {showForm && (
                 <form onSubmit={handleAdd} className="bg-gray-900 border border-gray-800 p-6 rounded-xl space-y-4 animate-fade-in shadow-xl">
@@ -129,13 +199,26 @@ export const RansomwareManager: React.FC = () => {
                         </div>
                     )}
                     
+                    {formSuccess && (
+                        <div className="bg-emerald-900/20 border border-emerald-900/50 p-3 rounded-lg text-emerald-300 text-sm">
+                            {formSuccess}
+                        </div>
+                    )}
+                    
+                    {isEditing && (
+                        <div className="bg-blue-900/20 border border-blue-900/50 p-3 rounded-lg text-blue-300 text-sm">
+                            Editando: <span className="font-bold">{newName}</span>
+                        </div>
+                    )}
+                    
                     <div>
                         <label className="block text-sm font-medium text-gray-400 mb-1">Nombre / Familia *</label>
                         <input
                             type="text"
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
-                            className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white focus:ring-1 focus:ring-emerald-500"
+                            disabled={isEditing}
+                            className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
                             placeholder="Ej. WannaCry, LockBit 3.0"
                         />
                     </div>
@@ -232,10 +315,7 @@ export const RansomwareManager: React.FC = () => {
                     <div className="flex justify-end gap-2 pt-4 border-t border-gray-800">
                         <button
                             type="button"
-                            onClick={() => {
-                                setShowForm(false);
-                                setFormError('');
-                            }}
+                            onClick={resetForm}
                             className="text-gray-400 hover:text-white px-4 py-2"
                         >
                             Cancelar
@@ -244,7 +324,7 @@ export const RansomwareManager: React.FC = () => {
                             type="submit"
                             className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg"
                         >
-                            Guardar
+                            {isEditing ? 'Actualizar' : 'Guardar'}
                         </button>
                     </div>
                 </form>
@@ -278,7 +358,22 @@ export const RansomwareManager: React.FC = () => {
                     <div key={item.id} className="bg-gray-900 border border-gray-800 p-5 rounded-xl hover:border-gray-700 transition-colors">
                         <div className="flex items-start justify-between mb-3">
                             <h3 className="font-bold text-lg text-emerald-400">{item.name}</h3>
-                            <ShieldAlert size={18} className="text-red-500" />
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={() => handleEdit(item)}
+                                    className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors text-blue-400 hover:text-blue-300"
+                                    title="Editar"
+                                >
+                                    <Edit2 size={16} />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(item.id, item.name)}
+                                    className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors text-red-400 hover:text-red-300"
+                                    title="Eliminar"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
                         </div>
                         
                         {item.description && (

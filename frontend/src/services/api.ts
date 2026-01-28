@@ -61,6 +61,16 @@ export const addRansomware = async (data: any) => {
     return response.data;
 };
 
+export const updateRansomware = async (id: number, data: any) => {
+    const response = await api.put(`/ransomware/${id}`, data);
+    return response.data;
+};
+
+export const deleteRansomware = async (id: number) => {
+    const response = await api.delete(`/ransomware/${id}`);
+    return response.data;
+};
+
 export const getAuditLogs = async () => {
     const response = await api.get('/logs/');
     return response.data;
