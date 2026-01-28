@@ -1,85 +1,72 @@
 #!/bin/bash
 
-# ============================================================================
-# Script de Gestión de Usuarios - Malcom System
-# ============================================================================
+set -e
 
-# Colores
+# Códigos de color
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Función para mostrar el banner
-show_banner() {
+mostrar_encabezado() {
     clear
-    echo -e "${CYAN}+========================================================+${NC}"
-    echo -e "${CYAN}|${NC}  ${BOLD}👥 GESTIÓN DE USUARIOS - MALCOM SYSTEM${NC}           ${CYAN}|${NC}"
-    echo -e "${CYAN}╚========================================================╝${NC}"
+    echo -e "${CYAN}========================================================${NC}"
+    echo -e "${CYAN}${BOLD}Gestión de Usuarios - Sistema AcuaDetection${NC}"
+    echo -e "${CYAN}========================================================${NC}"
     echo ""
 }
 
-# Función para verificar que Docker está corriendo
-check_docker() {
-    if ! sudo docker compose ps backend &>/dev/null; then
-        echo -e "${RED}[FAILED] Error: El contenedor backend no está corriendo.${NC}"
-        echo -e "${YELLOW}   Ejecuta primero: ./start.sh${NC}"
+verificar_docker() {
+    if ! docker compose ps backend &>/dev/null; then
+        echo -e "${RED}[ERROR] El contenedor del backend no está en ejecución${NC}"
+        echo -e "${YELLOW}   Ejecute primero: ./start.sh${NC}"
         exit 1
     fi
 }
 
-# Función para pausar y esperar input del usuario
-pause() {
+pausa() {
     echo ""
-    read -p "Presiona ENTER para continuar..."
+    read -p "Presione ENTER para continuar"
 }
 
-# ============================================================================
-# OPERACIONES DE USUARIO
-# ============================================================================
-
-# 1. Crear nuevo usuario
-create_user() {
-    show_banner
-    echo -e "${BLUE}=== Crear Nuevo Usuario ===${NC}\n"
+# Crear nuevo usuario
+crear_usuario() {
+    mostrar_encabezado
+    echo -e "${BLUE}Crear Nuevo Usuario${NC}\n"
     
-    read -p "Username: " USERNAME
+    read -p "Nombre de usuario: " USERNAME
     
-    # Validar que el username no esté vacío
     if [ -z "$USERNAME" ]; then
-        echo -e "${RED}[FAILED] El username no puede estar vacío${NC}"
-        pause
+        echo -e "${RED}[ERROR] El nombre de usuario no puede estar vacío${NC}"
+        pausa
         return
     fi
     
-    read -sp "Password: " PASSWORD
+    read -sp "Contraseña: " PASSWORD
     echo ""
     
-    # Validar que la password no esté vacía
     if [ -z "$PASSWORD" ]; then
-        echo -e "${RED}[FAILED] La contraseña no puede estar vacía${NC}"
-        pause
+        echo -e "${RED}[ERROR] La contraseña no puede estar vacía${NC}"
+        pausa
         return
     fi
     
-    read -p "¿Es administrador? (s/n): " IS_ADMIN
+    read -p "¿Es administrador? (s/n): " ES_ADMIN
     
-    # Convertir respuesta a booleano Python
-    if [ "$IS_ADMIN" = "s" ] || [ "$IS_ADMIN" = "S" ]; then
-        ADMIN_FLAG="True"
-        ROLE="Administrador"
+    if [ "$ES_ADMIN" = "s" ] || [ "$ES_ADMIN" = "S" ]; then
+        BANDERA_ADMIN="True"
+        ROL="Administrador"
     else
-        ADMIN_FLAG="False"
-        ROLE="Usuario Regular"
+        BANDERA_ADMIN="False"
+        ROL="Usuario Regular"
     fi
     
-    echo -e "\n${BLUE}Creando usuario...${NC}"
+    echo -e "\n${BLUE}Creando usuario${NC}"
     
-    # Ejecutar comando
-    RESULT=$(sudo docker compose exec -T backend python -c "
+    RESULTADO=$(docker compose exec -T backend python -c "
 from app.core.database import SessionLocal
 from app.models.user import User
 from app.core import security
@@ -90,7 +77,7 @@ try:
     if existing:
         print('ERROR:El usuario ya existe')
     else:
-        user = User(username='$USERNAME', hashed_password=security.get_password_hash('$PASSWORD'), is_admin=$ADMIN_FLAG)
+        user = User(username='$USERNAME', hashed_password=security.get_password_hash('$PASSWORD'), is_admin=$BANDERA_ADMIN)
         db.add(user)
         db.commit()
         print('SUCCESS:Usuario creado exitosamente')
@@ -98,23 +85,23 @@ finally:
     db.close()
 " 2>&1)
     
-    if echo "$RESULT" | grep -q "SUCCESS"; then
-        echo -e "${GREEN}[OK] Usuario creado exitosamente:${NC}"
-        echo -e "   Username: ${BOLD}$USERNAME${NC}"
-        echo -e "   Role: ${BOLD}$ROLE${NC}"
-    elif echo "$RESULT" | grep -q "ERROR"; then
-        echo -e "${RED}[FAILED] El usuario '$USERNAME' ya existe${NC}"
+    if echo "$RESULTADO" | grep -q "SUCCESS"; then
+        echo -e "${GREEN}[EXITOSO] Usuario creado exitosamente:${NC}"
+        echo -e "   Nombre de usuario: ${BOLD}$USERNAME${NC}"
+        echo -e "   Rol: ${BOLD}$ROL${NC}"
+    elif echo "$RESULTADO" | grep -q "ERROR"; then
+        echo -e "${RED}[FALLO] El usuario '$USERNAME' ya existe${NC}"
     else
-        echo -e "${RED}[FAILED] Error al crear usuario${NC}"
-        echo -e "${YELLOW}Detalles: $RESULT${NC}"
+        echo -e "${RED}[FALLO] Error al crear usuario${NC}"
+        echo -e "${YELLOW}Detalles: $RESULTADO${NC}"
     fi
     
-    pause
+    pausa
 }
 
-# 2. Listar todos los usuarios
-list_users() {
-    show_banner
+# Listar todos los usuarios
+listar_usuarios() {
+    mostrar_encabezado
     echo -e "${BLUE}=== Usuarios del Sistema ===${NC}\n"
     
     sudo docker compose exec -T backend python -c "
@@ -127,7 +114,7 @@ try:
     if not users:
         print('No hay usuarios en el sistema')
     else:
-        print(f'{'ID':<5} | {'Username':<20} | {'Role':<15}')
+        print(f'{'ID':<5} | {'Nombre de usuario':<20} | {'Rol':<15}')
         print('-' * 50)
         for user in users:
             role = 'Administrador' if user.is_admin else 'Usuario Regular'
@@ -136,43 +123,43 @@ finally:
     db.close()
 "
     
-    pause
+    pausa
 }
 
-# 3. Cambiar contraseña
-change_password() {
-    show_banner
+# Cambiar contraseña
+cambiar_contrasena() {
+    mostrar_encabezado
     echo -e "${BLUE}=== Cambiar Contraseña de Usuario ===${NC}\n"
     
-    read -p "Username: " USERNAME
+    read -p "Nombre de usuario: " USERNAME
     
     if [ -z "$USERNAME" ]; then
-        echo -e "${RED}[FAILED] El username no puede estar vacío${NC}"
-        pause
+        echo -e "${RED}[FALLO] El nombre de usuario no puede estar vacío${NC}"
+        pausa
         return
     fi
     
-    read -sp "Nueva contraseña: " NEW_PASSWORD
+    read -sp "Nueva contraseña: " NUEVA_CONTRASENA
     echo ""
     
-    if [ -z "$NEW_PASSWORD" ]; then
-        echo -e "${RED}[FAILED] La contraseña no puede estar vacía${NC}"
-        pause
+    if [ -z "$NUEVA_CONTRASENA" ]; then
+        echo -e "${RED}[FALLO] La contraseña no puede estar vacía${NC}"
+        pausa
         return
     fi
     
-    read -sp "Confirmar contraseña: " CONFIRM_PASSWORD
+    read -sp "Confirmar contraseña: " CONFIRMAR_CONTRASENA
     echo ""
     
-    if [ "$NEW_PASSWORD" != "$CONFIRM_PASSWORD" ]; then
-        echo -e "${RED}[FAILED] Las contraseñas no coinciden${NC}"
-        pause
+    if [ "$NUEVA_CONTRASENA" != "$CONFIRMAR_CONTRASENA" ]; then
+        echo -e "${RED}[FALLO] Las contraseñas no coinciden${NC}"
+        pausa
         return
     fi
     
-    echo -e "\n${BLUE}Actualizando contraseña...${NC}"
+    echo -e "\n${BLUE}Actualizando contraseña${NC}"
     
-    RESULT=$(sudo docker compose exec -T backend python -c "
+    RESULTADO=$(sudo docker compose exec -T backend python -c "
 from app.core.database import SessionLocal
 from app.models.user import User
 from app.core import security
@@ -181,7 +168,7 @@ db = SessionLocal()
 try:
     user = db.query(User).filter(User.username == '$USERNAME').first()
     if user:
-        user.hashed_password = security.get_password_hash('$NEW_PASSWORD')
+        user.hashed_password = security.get_password_hash('$NUEVA_CONTRASENA')
         db.commit()
         print('SUCCESS:Contraseña actualizada')
     else:
@@ -190,33 +177,33 @@ finally:
     db.close()
 " 2>&1)
     
-    if echo "$RESULT" | grep -q "SUCCESS"; then
-        echo -e "${GREEN}[OK] Contraseña actualizada para '$USERNAME'${NC}"
-    elif echo "$RESULT" | grep -q "ERROR"; then
-        echo -e "${RED}[FAILED] Usuario '$USERNAME' no encontrado${NC}"
+    if echo "$RESULTADO" | grep -q "SUCCESS"; then
+        echo -e "${GREEN}[EXITOSO] Contraseña actualizada para '$USERNAME'${NC}"
+    elif echo "$RESULTADO" | grep -q "ERROR"; then
+        echo -e "${RED}[FALLO] Usuario '$USERNAME' no encontrado${NC}"
     else
-        echo -e "${RED}[FAILED] Error al actualizar contraseña${NC}"
+        echo -e "${RED}[FALLO] Error al actualizar contraseña${NC}"
     fi
     
-    pause
+    pausa
 }
 
-# 4. Promover a administrador
-promote_user() {
-    show_banner
+# Promover a administrador
+promover_usuario() {
+    mostrar_encabezado
     echo -e "${BLUE}=== Promover Usuario a Administrador ===${NC}\n"
     
-    read -p "Username: " USERNAME
+    read -p "Nombre de usuario: " USERNAME
     
     if [ -z "$USERNAME" ]; then
-        echo -e "${RED}[FAILED] El username no puede estar vacío${NC}"
-        pause
+        echo -e "${RED}[FALLO] El nombre de usuario no puede estar vacío${NC}"
+        pausa
         return
     fi
     
-    echo -e "\n${BLUE}Promoviendo usuario...${NC}"
+    echo -e "\n${BLUE}Promoviendo usuario${NC}"
     
-    RESULT=$(sudo docker compose exec -T backend python -c "
+    RESULTADO=$(sudo docker compose exec -T backend python -c "
 from app.core.database import SessionLocal
 from app.models.user import User
 
@@ -236,35 +223,35 @@ finally:
     db.close()
 " 2>&1)
     
-    if echo "$RESULT" | grep -q "SUCCESS"; then
-        echo -e "${GREEN}[OK] '$USERNAME' ahora es administrador${NC}"
-    elif echo "$RESULT" | grep -q "INFO"; then
-        echo -e "${YELLOW}ℹ️  '$USERNAME' ya es administrador${NC}"
-    elif echo "$RESULT" | grep -q "ERROR"; then
-        echo -e "${RED}[FAILED] Usuario '$USERNAME' no encontrado${NC}"
+    if echo "$RESULTADO" | grep -q "SUCCESS"; then
+        echo -e "${GREEN}[EXITOSO]${NC} '$USERNAME' ahora es administrador"
+    elif echo "$RESULTADO" | grep -q "INFO"; then
+        echo -e "${YELLOW}[INFO]${NC} '$USERNAME' ya es administrador"
+    elif echo "$RESULTADO" | grep -q "ERROR"; then
+        echo -e "${RED}[ERROR]${NC} Usuario '$USERNAME' no encontrado"
     else
-        echo -e "${RED}[FAILED] Error al promover usuario${NC}"
+        echo -e "${RED}[ERROR]${NC} Error al promover usuario"
     fi
     
-    pause
+    pausa
 }
 
-# 5. Degradar a usuario regular
-demote_user() {
-    show_banner
+# Degradar a usuario regular
+degradar_usuario() {
+    mostrar_encabezado
     echo -e "${BLUE}=== Degradar Administrador a Usuario Regular ===${NC}\n"
     
-    read -p "Username: " USERNAME
+    read -p "Nombre de usuario: " USERNAME
     
     if [ -z "$USERNAME" ]; then
-        echo -e "${RED}[FAILED] El username no puede estar vacío${NC}"
-        pause
+        echo -e "${RED}[FALLO] El nombre de usuario no puede estar vacío${NC}"
+        pausa
         return
     fi
     
-    echo -e "\n${BLUE}Degradando usuario...${NC}"
+    echo -e "\n${BLUE}Degradando usuario${NC}"
     
-    RESULT=$(sudo docker compose exec -T backend python -c "
+    RESULTADO=$(sudo docker compose exec -T backend python -c "
 from app.core.database import SessionLocal
 from app.models.user import User
 
@@ -273,7 +260,7 @@ try:
     user = db.query(User).filter(User.username == '$USERNAME').first()
     if user:
         if not user.is_admin:
-            print('INFO:El usuario ya es regular')
+            print('INFO:El usuario ya es usuario regular')
         else:
             user.is_admin = False
             db.commit()
@@ -284,44 +271,44 @@ finally:
     db.close()
 " 2>&1)
     
-    if echo "$RESULT" | grep -q "SUCCESS"; then
-        echo -e "${GREEN}[OK] '$USERNAME' ahora es usuario regular${NC}"
-    elif echo "$RESULT" | grep -q "INFO"; then
-        echo -e "${YELLOW}ℹ️  '$USERNAME' ya es usuario regular${NC}"
-    elif echo "$RESULT" | grep -q "ERROR"; then
-        echo -e "${RED}[FAILED] Usuario '$USERNAME' no encontrado${NC}"
+    if echo "$RESULTADO" | grep -q "SUCCESS"; then
+        echo -e "${GREEN}[EXITOSO]${NC} '$USERNAME' ahora es usuario regular"
+    elif echo "$RESULTADO" | grep -q "INFO"; then
+        echo -e "${YELLOW}[INFO]${NC} '$USERNAME' ya es usuario regular"
+    elif echo "$RESULTADO" | grep -q "ERROR"; then
+        echo -e "${RED}[ERROR]${NC} Usuario '$USERNAME' no encontrado"
     else
-        echo -e "${RED}[FAILED] Error al degradar usuario${NC}"
+        echo -e "${RED}[ERROR]${NC} Error al degradar usuario"
     fi
     
-    pause
+    pausa
 }
 
-# 6. Eliminar usuario
-delete_user() {
-    show_banner
+# Eliminar usuario
+eliminar_usuario() {
+    mostrar_encabezado
     echo -e "${RED}=== Eliminar Usuario ===${NC}\n"
-    echo -e "${YELLOW}[WARN]  ADVERTENCIA: Esta acción no se puede deshacer${NC}\n"
+    echo -e "${YELLOW}[ADVERTENCIA]  Esta acción no se puede deshacer${NC}\n"
     
-    read -p "Username a eliminar: " USERNAME
+    read -p "Nombre de usuario a eliminar: " USERNAME
     
     if [ -z "$USERNAME" ]; then
-        echo -e "${RED}[FAILED] El username no puede estar vacío${NC}"
-        pause
+        echo -e "${RED}[FALLO] El nombre de usuario no puede estar vacío${NC}"
+        pausa
         return
     fi
     
-    read -p "¿Estás seguro de eliminar '$USERNAME'? (s/n): " CONFIRM
+    read -p "¿Está seguro de que desea eliminar a '$USERNAME'? (s/n): " CONFIRMAR
     
-    if [ "$CONFIRM" != "s" ] && [ "$CONFIRM" != "S" ]; then
+    if [ "$CONFIRMAR" != "s" ] && [ "$CONFIRMAR" != "S" ]; then
         echo -e "${YELLOW}Operación cancelada${NC}"
-        pause
+        pausa
         return
     fi
     
-    echo -e "\n${BLUE}Eliminando usuario...${NC}"
+    echo -e "\n${BLUE}Eliminando usuario${NC}"
     
-    RESULT=$(sudo docker compose exec -T backend python -c "
+    RESULTADO=$(sudo docker compose exec -T backend python -c "
 from app.core.database import SessionLocal
 from app.models.user import User
 
@@ -338,34 +325,34 @@ finally:
     db.close()
 " 2>&1)
     
-    if echo "$RESULT" | grep -q "SUCCESS"; then
-        echo -e "${GREEN}[OK] Usuario '$USERNAME' eliminado exitosamente${NC}"
-    elif echo "$RESULT" | grep -q "ERROR"; then
-        echo -e "${RED}[FAILED] Usuario '$USERNAME' no encontrado${NC}"
+    if echo "$RESULTADO" | grep -q "SUCCESS"; then
+        echo -e "${GREEN}[EXITOSO] Usuario '$USERNAME' eliminado exitosamente${NC}"
+    elif echo "$RESULTADO" | grep -q "ERROR"; then
+        echo -e "${RED}[FALLO] Usuario '$USERNAME' no encontrado${NC}"
     else
-        echo -e "${RED}[FAILED] Error al eliminar usuario${NC}"
+        echo -e "${RED}[FALLO] Error al eliminar usuario${NC}"
     fi
     
-    pause
+    pausa
 }
 
-# 7. Crear usuario rápido (sin confirmaciones)
-quick_create() {
-    show_banner
+# Crear usuario rápido (sin confirmaciones)
+creacion_rapida() {
+    mostrar_encabezado
     echo -e "${BLUE}=== Creación Rápida de Usuario ===${NC}\n"
-    echo -e "${YELLOW}Modo rápido: Usuario regular con username=password${NC}\n"
+    echo -e "${YELLOW}Modo rápido: Usuario regular con nombre de usuario=contraseña${NC}\n"
     
-    read -p "Username (será también la contraseña): " USERNAME
+    read -p "Nombre de usuario (será también la contraseña): " USERNAME
     
     if [ -z "$USERNAME" ]; then
-        echo -e "${RED}[FAILED] El username no puede estar vacío${NC}"
-        pause
+        echo -e "${RED}[FALLO] El nombre de usuario no puede estar vacío${NC}"
+        pausa
         return
     fi
     
-    echo -e "\n${BLUE}Creando usuario...${NC}"
+    echo -e "\n${BLUE}Creando usuario${NC}"
     
-    RESULT=$(sudo docker compose exec -T backend python -c "
+    RESULTADO=$(sudo docker compose exec -T backend python -c "
 from app.core.database import SessionLocal
 from app.models.user import User
 from app.core import security
@@ -384,37 +371,37 @@ finally:
     db.close()
 " 2>&1)
     
-    if echo "$RESULT" | grep -q "SUCCESS"; then
-        echo -e "${GREEN}[OK] Usuario creado exitosamente:${NC}"
-        echo -e "   Username: ${BOLD}$USERNAME${NC}"
-        echo -e "   Password: ${BOLD}$USERNAME${NC}"
-        echo -e "   Role: ${BOLD}Usuario Regular${NC}"
-    elif echo "$RESULT" | grep -q "ERROR"; then
-        echo -e "${RED}[FAILED] El usuario '$USERNAME' ya existe${NC}"
+    if echo "$RESULTADO" | grep -q "SUCCESS"; then
+        echo -e "${GREEN}[EXITOSO] Usuario creado exitosamente:${NC}"
+        echo -e "   Nombre de usuario: ${BOLD}$USERNAME${NC}"
+        echo -e "   Contraseña: ${BOLD}$USERNAME${NC}"
+        echo -e "   Rol: ${BOLD}Usuario Regular${NC}"
+    elif echo "$RESULTADO" | grep -q "ERROR"; then
+        echo -e "${RED}[FALLO] El usuario '$USERNAME' ya existe${NC}"
     else
-        echo -e "${RED}[FAILED] Error al crear usuario${NC}"
+        echo -e "${RED}[FALLO] Error al crear usuario${NC}"
     fi
     
-    pause
+    pausa
 }
 
 # ============================================================================
 # MENÚ PRINCIPAL
 # ============================================================================
 
-show_menu() {
-    show_banner
-    echo -e "${BOLD}Selecciona una opción:${NC}\n"
+mostrar_menu() {
+    mostrar_encabezado
+    echo -e "${BOLD}Seleccione una opción:${NC}\n"
     echo -e "  ${GREEN}1.${NC} Crear nuevo usuario"
     echo -e "  ${GREEN}2.${NC} Listar todos los usuarios"
     echo -e "  ${GREEN}3.${NC} Cambiar contraseña de usuario"
     echo -e "  ${GREEN}4.${NC} Promover usuario a administrador"
     echo -e "  ${GREEN}5.${NC} Degradar administrador a usuario regular"
     echo -e "  ${GREEN}6.${NC} Eliminar usuario"
-    echo -e "  ${CYAN}7.${NC} Creación rápida (username=password)"
+    echo -e "  ${CYAN}7.${NC} Creación rápida (nombre de usuario=contraseña)"
     echo -e "  ${RED}0.${NC} Salir"
     echo ""
-    read -p "Opción: " OPTION
+    read -p "Opción: " OPCION
 }
 
 # ============================================================================
@@ -423,30 +410,29 @@ show_menu() {
 
 main() {
     # Verificar que Docker esté corriendo
-    check_docker
+    verificar_docker
     
     while true; do
-        show_menu
+        mostrar_menu
         
-        case $OPTION in
-            1) create_user ;;
-            2) list_users ;;
-            3) change_password ;;
-            4) promote_user ;;
-            5) demote_user ;;
-            6) delete_user ;;
-            7) quick_create ;;
+        case $OPCION in
+            1) crear_usuario ;;
+            2) listar_usuarios ;;
+            3) cambiar_contrasena ;;
+            4) promover_usuario ;;
+            5) degradar_usuario ;;
+            6) eliminar_usuario ;;
+            7) creacion_rapida ;;
             0) 
-                echo -e "\n${GREEN}¡Hasta luego!${NC}\n"
+                echo -e "\n${GREEN}Saliendo${NC}\n"
                 exit 0
                 ;;
             *)
-                echo -e "${RED}[FAILED] Opción inválida${NC}"
-                pause
+                echo -e "${RED}[ERROR]${NC} Opción inválida"
+                pausa
                 ;;
         esac
     done
 }
 
-# Ejecutar el script
 main

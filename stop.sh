@@ -1,9 +1,8 @@
 #!/bin/bash
 
-# AcuaDetection - Stop Script
-# Detiene todos los servicios de forma segura
+set -e
 
-# Colores
+# Códigos de color
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -13,7 +12,7 @@ echo -e "${BLUE}================================================${NC}"
 echo -e "${RED}  Deteniendo AcuaDetection${NC}"
 echo -e "${BLUE}================================================${NC}\n"
 
-# Detectar comando Docker
+# Detectar comando docker
 if docker ps >/dev/null 2>&1; then
     DOCKER_CMD="docker"
 else
@@ -21,12 +20,12 @@ else
 fi
 
 # Detener servicios
-echo -e "${BLUE}[INFO]${NC} Deteniendo contenedores..."
+echo -e "${BLUE}[INFO]${NC} Deteniendo contenedores"
 $DOCKER_CMD compose down
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}[OK]${NC} Sistema detenido correctamente"
-    echo -e "\nPara iniciar nuevamente, ejecuta: ${BLUE}./start.sh${NC}\n"
+    echo -e "${GREEN}[EXITOSO]${NC} Sistema detenido exitosamente"
+    echo -e "\nPara iniciar nuevamente, ejecute: ${BLUE}./start.sh${NC}\n"
 else
     echo -e "${RED}[ERROR]${NC} Error al detener el sistema"
     exit 1

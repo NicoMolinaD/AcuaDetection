@@ -1,24 +1,24 @@
 #!/bin/bash
 
-#  Script de Deployment para Nube
-# Facilita la configuración y deployment en AWS, Azure, GCP, etc.
+# Script de Despliegue en Nube
+# Facilita la configuración y despliegue en AWS, Azure, GCP, etc.
 
 set -e
 
 echo "============================================================"
-echo " AcuaDetection Cloud Deployment Setup"
+echo " AcuaDetection - Despliegue en Nube"
 echo "============================================================"
 echo ""
 
 # Verificar si estamos en el directorio correcto
 if [ ! -f "docker-compose.yml" ]; then
-    echo "[FAILED] Error: docker-compose.yml no encontrado"
-    echo "Ejecuta este script desde el directorio raíz del proyecto"
+    echo "[FALLO] Error: docker-compose.yml no encontrado"
+    echo "Ejecute este script desde el directorio raíz del proyecto"
     exit 1
 fi
 
 # Menú interactivo
-echo "Selecciona tu proveedor de nube:"
+echo "Seleccione su proveedor de nube:"
 echo "1) AWS (EC2)"
 echo "2) Azure (VM)"
 echo "3) Google Cloud (Compute Engine)"
@@ -28,24 +28,24 @@ read -p "Opción (1-4): " provider_choice
 
 case $provider_choice in
     1)
-        echo "📦 Configurando para AWS EC2..."
+        echo "Configurando para AWS EC2..."
         provider="AWS EC2"
         firewall_note="AWS Security Group"
         ;;
     2)
-        echo "📦 Configurando para Azure VM..."
+        echo "Configurando para Azure VM..."
         provider="Azure VM"
         firewall_note="Azure Network Security Group (NSG)"
         ;;
     3)
-        echo "📦 Configurando para Google Cloud..."
+        echo "Configurando para Google Cloud..."
         provider="Google Cloud Compute Engine"
         firewall_note="Google Cloud Firewall"
         ;;
     *)
-        echo "📦 Configuración manual..."
+        echo "Configuración manual..."
         provider="Proveedor personalizado"
-        firewall_note="Tu firewall"
+        firewall_note="Su firewall"
         ;;
 esac
 
@@ -56,14 +56,14 @@ echo "============================================================"
 echo ""
 
 read -p "Dominio (ej: tudominio.com): " domain
-read -p "Email para certificados (ej: admin@tudominio.com): " email
-read -p "Tu IP pública: " public_ip
+read -p "Correo electrónico para certificados (ej: admin@tudominio.com): " email
+read -p "Su IP pública: " public_ip
 read -sp "Contraseña PostgreSQL (mínimo 12 caracteres): " db_password
 echo ""
 
 # Validar contraseña
 if [ ${#db_password} -lt 12 ]; then
-    echo "[FAILED] Contraseña muy corta (mínimo 12 caracteres)"
+    echo "[FALLO] Contraseña muy corta (mínimo 12 caracteres)"
     exit 1
 fi
 
@@ -75,29 +75,29 @@ echo "============================================================"
 echo " INFORMACIÓN GENERADA"
 echo "============================================================"
 echo ""
-echo "Domain: $domain"
-echo "Email: $email"
-echo "Public IP: $public_ip"
-echo "DB Password: [CONFIGURADO]"
-echo "SECRET_KEY: [GENERADO]"
+echo "Dominio: $domain"
+echo "Correo electrónico: $email"
+echo "IP Pública: $public_ip"
+echo "Contraseña BD: [CONFIGURADA]"
+echo "SECRET_KEY: [GENERADA]"
 echo ""
 
-read -p "¿Confirmar configuración? (s/n): " confirm
-if [ "$confirm" != "s" ]; then
-    echo "Cancelado."
+read -p "Confirme la configuración (s/n): " confirm
+if [ "$confirm" != "s" ] && [ "$confirm" != "S" ]; then
+    echo "Operación cancelada."
     exit 1
 fi
 
 echo ""
 echo "============================================================"
-echo "⚙️  ACTUALIZANDO .env"
+echo "Actualizando .env"
 echo "============================================================"
 echo ""
 
-# Backup de .env si existe
+# Copia de seguridad de .env existente
 if [ -f ".env" ]; then
     cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
-    echo " Backup de .env anterior guardado"
+    echo " Copia de seguridad de .env anterior guardada"
 fi
 
 # Crear .env para producción
@@ -108,7 +108,7 @@ cat > .env << EOF
 # Proveedor: $provider
 # ===============================================================
 
-# === SSL/TLS CERTIFICADOS ===
+# === CERTIFICADOS SSL/TLS ===
 DOMAIN_NAME=$domain
 EMAIL=$email
 CERT_TYPE=letsencrypt
@@ -129,7 +129,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=11520  # 8 días
 # === ENCRIPTACIÓN ===
 DB_ENCRYPTION_KEY=YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
 
-# === APIs EXTERNAS (OPCIONAL - Configurar si necesario) ===
+# === APIs EXTERNAS (OPCIONAL - Configurar si es necesario) ===
 VT_API_KEY=
 HA_API_KEY=
 ABUSEIPDB_API_KEY=
@@ -137,7 +137,7 @@ MALSHARE_API_KEY=
 MALWAREBAZAAR_API_KEY=
 PT_API_KEY=
 
-# === SANDBOX (OPCIONAL - Configurar si necesario) ===
+# === SANDBOX (OPCIONAL - Configurar si es necesario) ===
 CUCKOO_API_URL=
 CUCKOO_API_KEY=
 CAPE_API_URL=
@@ -148,7 +148,7 @@ echo " .env actualizado con configuración de producción"
 echo ""
 
 echo "============================================================"
-echo " PRE-DEPLOYMENT CHECKLIST"
+echo " LISTA DE VERIFICACIÓN PREVIA AL DESPLIEGUE"
 echo "============================================================"
 echo ""
 
@@ -164,76 +164,77 @@ for i in "${!checklist[@]}"; do
 done
 
 echo ""
-read -p "¿Todos los puntos están completos? (s/n): " checklist_ok
-if [ "$checklist_ok" != "s" ]; then
-    echo "Por favor completa los pasos del checklist."
-    echo "Luego ejecuta: sudo docker compose up --build -d"
+read -p "¿Están todos los elementos de la lista completados? (s/n): " checklist_ok
+if [ "$checklist_ok" != "s" ] && [ "$checklist_ok" != "S" ]; then
+    echo "Complete todos los elementos de la lista."
+    echo "Luego ejecute: docker compose up --build -d"
     exit 1
 fi
 
 echo ""
 echo "============================================================"
-echo " INICIANDO DEPLOYMENT"
+echo " Iniciando Despliegue"
 echo "============================================================"
 echo ""
 
 # Validar Docker
 if ! command -v docker &> /dev/null; then
-    echo "[FAILED] Docker no está instalado"
-    echo "Instala Docker: https://get.docker.com"
+    echo "[ERROR] Docker no está instalado"
+    echo "Instale Docker: https://get.docker.com"
     exit 1
 fi
 
-echo " Docker disponible"
+echo " Docker está disponible"
 echo ""
 
-echo "📦 Construyendo imágenes (esto puede tomar varios minutos)..."
-sudo docker compose build
+echo "Construyendo imágenes (esto puede tomar varios minutos)"
+docker compose build
 
 echo ""
-echo " Levantando servicios..."
-sudo docker compose up -d
+echo " Iniciando servicios"
+docker compose up -d
 
 echo ""
-echo "⏳ Esperando a que se generen certificados (60 segundos)..."
+echo "Esperando generación de certificados (60 segundos)"
 sleep 60
 
 echo ""
 echo "============================================================"
-echo "[OK] DEPLOYMENT COMPLETADO"
+echo "[EXITOSO] Despliegue Completado"
 echo "============================================================"
 echo ""
 
-echo " Verificando servicios..."
+echo " Verificando servicios"
 echo ""
-sudo docker compose ps
+docker compose ps
 echo ""
 
-echo " Verificando certificados..."
-sudo docker compose exec -T nginx certbot certificates | grep -A 5 "Certificate Name" || echo "⏳ Aún generando certificados..."
+echo " Verificando certificados"
+docker compose exec -T nginx certbot certificates | grep -A 5 "Certificate Name" || echo "Generación de certificado en progreso"
 
 echo ""
 echo "============================================================"
-echo " PRÓXIMOS PASOS"
+echo " Próximos Pasos"
 echo "============================================================"
 echo ""
-echo "1. Espera 5-10 minutos para que los certificados se generen completamente"
+echo "1. Espere 5-10 minutos para que los certificados se generen completamente"
 echo ""
-echo "2. Verifica el certificado:"
+echo "2. Verifique el certificado:"
 echo "   curl https://$domain/"
 echo ""
-echo "3. Accede a la aplicación:"
+echo "3. Acceda a la aplicación:"
 echo "   https://$domain"
 echo ""
-echo "4. Ver logs:"
-echo "   sudo docker compose logs -f"
+echo "4. Vea los registros:"
+echo "   docker compose logs -f"
 echo ""
-echo "5. Para problemas:"
-echo "   sudo docker compose logs nginx | grep -i error"
+echo "5. Para solucionar problemas:"
+echo "   docker compose logs nginx | grep -i error"
 echo ""
 echo "============================================================"
-echo "🎉 ¡Deployment iniciado!"
+echo " Despliegue Iniciado"
 echo "============================================================"
 echo ""
-echo "Información guardada en .env (PROTEGE ESTE ARCHIVO)"
+echo "Configuración guardada en .env (Proteja este archivo)"
 echo ""
+

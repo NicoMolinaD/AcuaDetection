@@ -1,46 +1,158 @@
-# AcuaDetection - Guia Completa del Sistema
+# AcuaDetection - Sistema Completo de Detección de Amenazas
 
-**Version**: 2.0 SSL/TLS Edition  
-**Ultima Actualizacion**: 2025-01-26  
+**Nota**: Este README contiene toda la documentación del proyecto consolidada en un único archivo.
+
+**Versión**: 2.0 SSL/TLS Edition  
+**Última Actualización**: Enero 2026  
 **Estado**: Production-Ready  
+
+Para iniciar el sistema, ejecute `./start.sh` y acceda a https://10.3.11.101:8443
+
+---
+
+## Información Importante
+
+Antes de iniciar, considere lo siguiente:
+
+1. **Certificados autofirmados**: El navegador mostrará una advertencia de conexión no segura. Esto es normal en redes privadas. Seleccione "Aceptar riesgo" para continuar.
+
+2. **Credenciales de desarrollo**: Las credenciales por defecto (`admin/admin123`) son para desarrollo. Cambie estas credenciales en producción.
+
+3. **Acceso local solamente**: El sistema está configurado para red privada (10.3.11.0/24). No exponga a internet sin configuración adicional de seguridad.
+
+4. **Copias de seguridad regulares**: Realice copias de seguridad regulares de PostgreSQL:
+   ```bash
+   docker compose exec db pg_dump -U aquadetection aquadetection_db > backup.sql
+   ```
 
 ---
 
 ## Tabla de Contenidos
 
-1. [Cambios Principales en v2.0](#cambios-principales-en-v20-sslhttps-migration)
-2. [Stack de Tecnologias](#stack-de-tecnologias)
-3. [Arquitectura del Sistema](#arquitectura-del-sistema)
-4. [Requisitos e Instalacion](#requisitos-e-instalacion)
-5. [Configuracion Inicial](#configuracion-inicial)
-6. [Inicio del Sistema](#inicio-del-sistema)
-7. [Gestion de Usuarios](#gestion-de-usuarios)
-8. [Uso del Sistema](#uso-del-sistema)
-9. [API REST Completa](#api-rest-completa)
-10. [Seguridad Implementada](#seguridad-implementada)
-11. [Deployment en la Nube](#deployment-en-la-nube)
-12. [Solucion de Problemas](#solucion-de-problemas)
-13. [Referencia Tecnica](#referencia-tecnica)
+1. [Inicio Rápido](#inicio-rápido)
+2. [Cambios en v2.0 y Checklist](#cambios-principales-en-v20-sslhttps-migration-y-deployment-checklist)
+3. [Stack de Tecnologías](#stack-de-tecnologías)
+4. [Arquitectura del Sistema](#arquitectura-del-sistema)
+5. [Requisitos e Instalación](#requisitos-e-instalación)
+6. [Configuración Inicial](#configuración-inicial)
+7. [Inicio del Sistema](#inicio-del-sistema)
+8. [Gestión de Usuarios](#gestión-de-usuarios)
+9. [Uso del Sistema](#uso-del-sistema)
+10. [API REST](#api-rest-completa)
+11. [Seguridad Implementada](#seguridad-implementada)
+12. [Implementación en la Nube](#implementación-en-la-nube)
+13. [Solución de Problemas](#solución-de-problemas)
+14. [Referencia Técnica](#referencia-técnica)
+15. [Soporte y Contacto](#soporte-y-contacto)
 
 ---
 
-## Cambios Principales en v2.0 (SSL/HTTPS Migration)
+## Inicio Rápido
+
+### Para Red Privada Local (10.3.11.101)
+
+```bash
+# 1. Navegar al directorio
+cd /home/nicolasmolina-diaz/new
+
+# 2. Ejecutar script de inicio
+chmod +x start.sh
+./start.sh
+
+# El sistema estará disponible en 2-3 minutos
+```
+
+**Acceso después de iniciarse:**
+- **UI**: https://10.3.11.101:8443
+- **Documentación API**: https://10.3.11.101:8443/api/v1/docs
+- **Base de API**: https://10.3.11.101:8443/api/v1
+- **Usuario**: `admin` / Contraseña: `admin123`
+
+**Comandos útiles durante la ejecución:**
+```bash
+Verificar:    ./verify_deployment.sh
+Ver estado:   docker compose ps
+Ver registros: docker compose logs -f
+Detener:      ./stop.sh
+```
+
+### Para Producción con Dominio Personalizado
+
+```bash
+# 1. Apuntar DNS a su servidor
+# En su proveedor DNS: A  su-dominio.com  →  SU_IP_SERVIDOR
+
+# 2. Ejecutar inicio
+./start.sh
+# Se le solicitará: dominio y correo electrónico para Let's Encrypt
+
+# 3. Acceso
+https://su-dominio.com
+```
+
+### Estado de Configuración
+
+El sistema se encuentra completamente configurado:
+- Puertos: 8080 (HTTP) → 8443 (HTTPS)
+- Certificados: Autofirmados (10 años)
+- Base de datos: PostgreSQL 15-alpine
+- Backend: FastAPI con endpoint /health
+- Frontend: React + Tailwind CSS
+- Nginx: Reverse proxy con SSL/TLS
+- Inicialización: Automática
+- Verificaciones de salud: Todos los servicios
+
+---
+
+## Cambios Principales en v2.0 (SSL/HTTPS Migration) y Checklist de Implementación
+
+### Checklist Pre-Implementación
+
+**Requisitos del Sistema:**
+- [ ] Linux (Ubuntu 20.04+, Debian 11+)
+- [ ] Docker CE 20.10+ instalado
+- [ ] Docker Compose 2.0+ instalado
+- [ ] CPU: 2+ núcleos
+- [ ] RAM: 4GB mínimo (8GB recomendado)
+- [ ] Disco: 10GB espacio libre
+- [ ] Puertos 8080 y 8443 disponibles
+- [ ] Acceso root/sudo
+
+**Verificación Pre-Inicio:**
+```bash
+# Verificar Docker
+docker --version
+docker compose --version
+
+# Verificar puertos disponibles
+lsof -i :8080 || echo "Puerto 8080 disponible"
+lsof -i :8443 || echo "Puerto 8443 disponible"
+
+# Verificar espacio en disco
+df -h | grep -E "/$|/home"
+
+# Permisos ejecutables
+chmod +x start.sh stop.sh
+ls -la *.sh | grep rwx
+```
+
+### Cambios Principales en v2.0
 
 **Antes (v1.0 - Localhost HTTP):**
--  Servicio expuesto en HTTP inseguro
--  Acceso publico en puertos 8082, 8083
--  Cualquiera podia acceder
--  No apto para produccion en la nube
+- Servicio expuesto en HTTP inseguro
+- Acceso público en puertos 8082, 8083
+- Cualquiera podía acceder
+- No apto para producción en la nube
 
 **Ahora (v2.0 - Cloud-Ready HTTPS):**
--  SSL/TLS encryption (HTTPS)
--  Dominio personalizado: `aquadetection.local`
--  Control de acceso por IP: solo `10.3.11.101`
--  Certificados gestionados automaticamente con CertBot
--  HTTP/2 y compresion GZIP
--  Security Headers (HSTS, X-Frame-Options)
--  Reverse Proxy con Nginx
--  Ready para AWS, Azure, GCP
+- Encriptación SSL/TLS (HTTPS)
+- Dominio personalizado: `aquadetection.local`
+- Control de acceso por IP: solo `10.3.11.101`
+- Certificados gestionados automáticamente con CertBot
+- HTTP/2 y compresión GZIP
+- Encabezados de seguridad (HSTS, X-Frame-Options)
+- Reverse Proxy con Nginx
+- Listo para AWS, Azure, GCP
 
 ### Cambios en Puertos y Acceso
 
@@ -50,65 +162,65 @@
 | **Backend API** | `localhost:8083` | `https://aquadetection.local:8443/api/v1` | Solo IP 10.3.11.101 |
 | **BD PostgreSQL** | `localhost:5432` | `127.0.0.1:5434` | Solo local (Docker) |
 
-### Caracteristicas Nuevas de Seguridad
+### Características Nuevas de Seguridad
 
 ```
 SSL/TLS 1.3 con RSA 2048-bit
 Certificados auto-renovables con CertBot
-IP Whitelist enforcement
-HTTP/2 protocol
-GZIP compression
-Security Headers
-Audit Logging Completo
+Aplicación de IP Whitelist
+Protocolo HTTP/2
+Compresión GZIP
+Encabezados de Seguridad
+Registro de Auditoría Completo
 ```
 
 ---
 
-## Stack de Tecnologias
+## Stack de Tecnologías
 
 ### Backend
 
-| Tecnologia | Version | Proposito |
+| Tecnología | Versión | Propósito |
 |-----------|---------|----------|
 | **Python** | 3.11+ | Lenguaje principal |
-| **FastAPI** | 0.104+ | Framework API asincronico |
-| **Pydantic** | 2.0+ | Validacion de datos |
+| **FastAPI** | 0.104+ | Framework API asincrónico |
+| **Pydantic** | 2.0+ | Validación de datos |
 | **SQLAlchemy** | 2.0+ | ORM para base de datos |
-| **Uvicorn** | 0.24+ | ASGI server |
-| **JWT** | PyJWT 2.8+ | Autenticacion sin estado |
-| **bcrypt** | 4.1+ | Hash de contrasenas |
+| **Uvicorn** | 0.24+ | Servidor ASGI |
+| **JWT** | PyJWT 2.8+ | Autenticación sin estado |
+| **bcrypt** | 4.1+ | Hash de contraseñas |
 
 ### Frontend
 
-| Tecnologia | Version | Proposito |
+| Tecnología | Versión | Propósito |
 |-----------|---------|----------|
-| **React** | 18+ | UI framework |
-| **TypeScript** | 5+ | Type safety |
-| **Vite** | 5+ | Build tool ultra-rapido |
-| **Tailwind CSS** | 3+ | Styling utility-first |
-| **Axios** | 1.6+ | HTTP client |
-| **React Router** | 6+ | Routing |
+| **React** | 18+ | Framework de interfaz |
+| **TypeScript** | 5+ | Seguridad de tipos |
+| **Vite** | 5+ | Herramienta de construcción ultra-rápida |
+| **Tailwind CSS** | 3+ | Estilos utility-first |
+| **Axios** | 1.6+ | Cliente HTTP |
+| **React Router** | 6+ | Enrutamiento |
 
 ### Infraestructura
 
-| Tecnologia | Version | Proposito |
+| Tecnología | Versión | Propósito |
 |-----------|---------|----------|
-| **Docker** | 24+ | Containerizacion |
-| **Docker Compose** | 2.20+ | Orchestracion |
+| **Docker** | 24+ | Containerización |
+| **Docker Compose** | 2.20+ | Orquestación |
 | **Nginx** | 1.29-alpine | Reverse Proxy + SSL/TLS |
 | **PostgreSQL** | 15-alpine | Base de datos relacional |
-| **CertBot** | 2.0+ | SSL/TLS Certificate Management |
-| **OpenSSL** | 3.0+ | Criptografia |
+| **CertBot** | 2.0+ | Gestión de Certificados SSL/TLS |
+| **OpenSSL** | 3.0+ | Criptografía |
 
-### Analisis de Amenazas (Integraciones)
+### Análisis de Amenazas (Integraciones)
 
-| API | Proposito | Tipo |
+| API | Propósito | Tipo |
 |-----|----------|------|
-| **VirusTotal** | Analisis de hashes y URLs | Malware Intelligence |
-| **AbuseIPDB** | Reputacion de IPs | IP Intelligence |
-| **URLhaus** | Bases de datos de URLs maliciosas | URL Intelligence |
-| **YARA Rules** | Deteccion de patrones | Local Pattern Matching |
-| **Sandbox Detections** | Comportamiento de malware | Behavioral Analysis |
+| **VirusTotal** | Análisis de hashes y URLs | Inteligencia de Malware |
+| **AbuseIPDB** | Reputación de IPs | Inteligencia de IP |
+| **URLhaus** | Bases de datos de URLs maliciosas | Inteligencia de URL |
+| **Reglas YARA** | Detección de patrones | Análisis de Patrones Local |
+| **Detecciones de Sandbox** | Comportamiento de malware | Análisis Conductual |
 
 ---
 
@@ -118,7 +230,7 @@ Audit Logging Completo
 
 ```
 +-------------------------------------------------------------+
-|                    Internet / Cloud                          |
+|                    Internet / Nube                           |
 +----------------------------+--------------------------------+
                              |
                     +----------------+
@@ -130,7 +242,7 @@ Audit Logging Completo
            |                                    |
      +-----------+                     +-----------+
      |   HTTPS    |                     |    HTTP    |
-     |   Port 443 |                     |   Port 80  |
+     |   Puerto 443 |                     |   Puerto 80  |
      +-----+------+                     +-----+------+
            |                                   |
            +---------------+-------------------+
@@ -144,10 +256,10 @@ Audit Logging Completo
           +----------------+----------------+
           |                |                |
     +----------+   +----------+   +----------+
-    | Frontend  |   |  Backend  |   | Database  |
+    | Frontend  |   |  Backend  |   | Base de datos  |
     |  (React)  |   | (FastAPI) |   | (PostgreSQL)
-    | Port 3000 |   | Port 8000 |   | Port 5432 |
-    |(Internal) |   |(Internal) |   |(Internal) |
+    | Puerto 3000 |   | Puerto 8000 |   | Puerto 5432 |
+    |(Interno) |   |(Interno) |   |(Interno) |
     +-----------+   +-----------+   +-----------+
 ```
 
@@ -156,17 +268,17 @@ Audit Logging Completo
 ```
 1. Usuario accede a https://aquadetection.local
               
-2. TLS Handshake (Certificate validation)
+2. Protocolo de enlace TLS (validación de certificado)
               
-3. IP Whitelist Check (10.3.11.101)
+3. Verificación de IP Whitelist (10.3.11.101)
               
 4. Nginx recibe solicitud HTTPS
               
-5. Request a Frontend (React) o Backend (API)
+5. Solicitud a Frontend (React) o Backend (API)
               
 6. Backend consulta PostgreSQL si es necesario
               
-7. Response con datos (JSON/HTML)
+7. Respuesta con datos (JSON/HTML)
               
 8. Nginx encripta con TLS 1.3
               
@@ -178,43 +290,43 @@ Audit Logging Completo
 #### **Nginx (Reverse Proxy + SSL/TLS)**
 - Termina conexiones TLS
 - Redirige HTTP -> HTTPS
-- Enruta trafico a Frontend/Backend
-- Valida IP origen
-- Anade security headers
+- Enruta tráfico a Frontend/Backend
+- Valida IP de origen
+- Añade encabezados de seguridad
 - Comprime con GZIP
 
 #### **Frontend (React + Vite)**
-- SPA interactiva
-- UI responsive con Tailwind
-- Autenticacion con JWT
-- Comunicacion con Backend via API
+- Aplicación de una sola página interactiva
+- Interfaz receptiva con Tailwind
+- Autenticación con JWT
+- Comunicación con Backend vía API
 
 #### **Backend (FastAPI)**
-- REST API asincronico
-- Autenticacion y autorizacion
-- Validacion de datos
-- Integracion con APIs externas
-- Analisis de amenazas
+- API REST asincrónica
+- Autenticación y autorización
+- Validación de datos
+- Integración con APIs externas
+- Análisis de amenazas
 
 #### **PostgreSQL**
 - Almacenamiento persistente
 - Usuarios y roles
-- Indices optimizados
-- Backups automatizados
+- Índices optimizados
+- Copias de seguridad automatizadas
 
 ---
 
-## Requisitos e Instalacion
+## Requisitos e Instalación
 
 ### Requisitos del Sistema
 
 ```
  Sistema Operativo: Linux (Ubuntu 20.04+, Debian 11+)
- CPU: 2+ cores
- RAM: 4GB minimo (8GB recomendado)
+ CPU: 2+ núcleos
+ RAM: 4GB mínimo (8GB recomendado)
  Disco: 10GB espacio libre
- Conexion de red: Estable
- Puertos a usar: 8080 (HTTP alias), 8443 (HTTPS), 5434 (PostgreSQL)
+ Conexión de red: Estable
+ Puertos a utilizar: 8080 (alias HTTP), 8443 (HTTPS), 5434 (PostgreSQL)
  IP del servidor: 10.3.11.101
 ```
 
@@ -231,7 +343,7 @@ sudo apt-get update && sudo apt-get install -y \
     python3 \
     python3-pip
 
-# Verificar instalacion
+# Verificar instalación
 docker --version
 docker-compose --version
 python3 --version
@@ -251,67 +363,67 @@ docker ps
 ### Clonar Repositorio
 
 ```bash
-git clone https://github.com/tuorganizacion/aquadetection.git
+git clone https://github.com/suorganizacion/aquadetection.git
 cd aquadetection
 chmod +x *.sh
 ```
 
 ---
 
-## Configuracion Inicial
+## Configuración Inicial
 
-### 1. Crear Archivo `.env`
+### 1. Crear Archivo .env
 
 ```bash
-# Crear desde template
+# Crear desde plantilla
 cp .env.example .env
 
-# Editar configuracion
+# Editar configuración
 nano .env
 ```
 
-### 2. Contenido del `.env` (Esencial)
+### 2. Contenido del .env (Esencial)
 
 ```bash
-# ========== SSL/TLS Configuration ==========
+# ========== Configuración SSL/TLS ==========
 DOMAIN_NAME=aquadetection.local
 CERT_TYPE=self-signed          # 'self-signed' o 'letsencrypt'
 EMAIL=admin@aquadetection.local       # Para Let's Encrypt
 ALLOWED_IP=10.3.11.101         # IP para whitelist
 
-# ========== Database Configuration ==========
+# ========== Configuración de Base de Datos ==========
 POSTGRES_DB=aquadetection_db
 POSTGRES_USER=aquadetection_user
 POSTGRES_PASSWORD=YourSecurePassword123!
 DATABASE_URL=postgresql://aquadetection_user:YourSecurePassword123!@db:5432/aquadetection_db
 
-# ========== Backend Configuration ==========
+# ========== Configuración de Backend ==========
 SECRET_KEY=your-secret-key-change-me-in-production-minimum-32-chars-long
 ENVIRONMENT=production          # 'development' o 'production'
 LOG_LEVEL=INFO
 
-# ========== API Keys (Opcional pero recomendado) ==========
+# ========== Claves de API (Opcional pero recomendado) ==========
 VIRUSTOTAL_API_KEY=your_virustotal_key_here
 ABUSEIPDB_API_KEY=your_abuseipdb_key_here
 
-# ========== Security ==========
+# ========== Seguridad ==========
 CORS_ORIGINS=https://aquadetection.local
 SESSION_TIMEOUT=3600          # segundos
 ```
 
-### 3. Configurar `/etc/hosts`
+### 3. Configurar /etc/hosts
 
-En tu maquina local **Y** en el servidor (10.3.11.101):
+En su máquina local **Y** en el servidor (10.3.11.101):
 
 ```bash
 sudo nano /etc/hosts
 
-# Agregar estas lineas:
+# Agregar estas líneas:
 127.0.0.1       aquadetection.local
 10.3.11.101     aquadetection.local
 ```
 
-### 4. Verificar Configuracion
+### 4. Verificar Configuración
 
 ```bash
 # Validar archivo .env
@@ -322,34 +434,34 @@ cat .env | grep "=" | head -5
 
 # Probar conectividad
 ping -c 3 10.3.11.101
-curl -I https://10.3.11.101 2>/dev/null || echo "Esperado: conexion rechazada (todavia no iniciado)"
+curl -I https://10.3.11.101 2>/dev/null || echo "Esperado: conexión rechazada (todavía no iniciado)"
 ```
 
 ---
 
 ## Inicio del Sistema
 
-### Opcion 1: Inicio Rapido (Recomendado)
+### Opción 1: Inicio Rápido (Recomendado)
 
 ```bash
-# Ir al directorio raiz
+# Ir al directorio raíz
 cd /ruta/a/aquadetection
 
 # Iniciar todo
 ./start.sh
 
 # Esperar 30-60 segundos para que se generen certificados
-# Ver logs
+# Ver registros
 docker-compose logs -f nginx
 
-# Cuando veas: "nginx entered RUNNING state"
-# El sistema esta listo
+# Cuando vea: "nginx entered RUNNING state"
+# El sistema está listo
 ```
 
-### Opcion 2: Inicio Manual con Docker Compose
+### Opción 2: Inicio Manual con Docker Compose
 
 ```bash
-# Construir imagenes (primera vez)
+# Construir imágenes (primera vez)
 docker-compose build
 
 # Iniciar servicios
@@ -358,59 +470,59 @@ docker-compose up -d
 # Ver estado
 docker-compose ps
 
-# Ver logs
+# Ver registros
 docker-compose logs -f
 ```
 
-### Opcion 3: Inicio con Script SSL Personalizado
+### Opción 3: Inicio con Script SSL Personalizado
 
 ```bash
-chmod +x setup_ssl.sh aquadetection_ssl.sh
+chmod +x setup_ssl.sh malcom_ssl.sh
 
 # Configurar SSL
 ./setup_ssl.sh
 
 # Iniciar servicios SSL
-./aquadetection_ssl.sh start
+./malcom_ssl.sh start
 
 # Ver estado
-./aquadetection_ssl.sh status
+./malcom_ssl.sh status
 
 # Probar HTTPS
-./aquadetection_ssl.sh test-https
+./malcom_ssl.sh test-https
 ```
 
-### Verificar que Todo Esta Funcionando
+### Verificar que Todo Está Funcionando
 
 ```bash
 # Ver estado de servicios
 docker-compose ps
 
-# Deberia mostrar:
+# Debería mostrar:
 # NAME          STATUS
 # nginx         Up (healthy)
 # frontend      Up
 # backend       Up
 # db            Up
 
-# Verificar logs de Nginx
+# Verificar registros de Nginx
 docker-compose logs nginx | tail -20
 
 # Probar certificado SSL
 openssl s_client -connect 10.3.11.101:443 -servername aquadetection.local < /dev/null
 
-# Deberia mostrar: "Verify return code: 18 (self signed certificate)"
+# Debería mostrar: "Verify return code: 18 (self signed certificate)"
 
 # Probar acceso HTTPS
 curl -k -I https://aquadetection.local/ 2>&1 | head -10
 
-# Deberia mostrar: "HTTP/2 200"
+# Debería mostrar: "HTTP/2 200"
 ```
 
 ### Inicializar Base de Datos (Primera Vez)
 
 ```bash
-# Ejecutar script de inicializacion
+# Ejecutar script de inicialización
 docker-compose exec backend python init_db.py
 
 # Resultado esperado:
@@ -421,53 +533,53 @@ docker-compose exec backend python init_db.py
 
 ---
 
-##  Gestion de Usuarios
+## Gestión de Usuarios
 
 ### Credenciales por Defecto
 
-| Usuario | Contrasena | Rol | Descripcion |
+| Usuario | Contraseña | Rol | Descripción |
 |---------|-----------|-----|-------------|
 | `admin` | `admin123` | Admin | Acceso total al sistema |
-| `user` | `user123` | User | Acceso limitado a scans |
+| `user` | `user123` | User | Acceso limitado a escaneos |
 
- **CAMBIAR CONTRASENAS INMEDIATAMENTE DESPUES DEL PRIMER LOGIN**
+ **CAMBIAR CONTRASEÑAS INMEDIATAMENTE DESPUÉS DEL PRIMER INICIO DE SESIÓN**
 
-### Opcion 1: Script Interactivo (Recomendado)
+### Opción 1: Script Interactivo (Recomendado)
 
 ```bash
-# Menu interactivo completo
+# Menú interactivo completo
 ./manage_users.sh
 
 # Opciones:
 # [1] Crear nuevo usuario
 # [2] Listar todos los usuarios
-# [3] Cambiar contrasena
+# [3] Cambiar contraseña
 # [4] Promover a administrador
 # [5] Degradar de administrador
 # [6] Eliminar usuario
-# [7] Crear usuario rapido
+# [7] Crear usuario rápido
 ```
 
-### Opcion 2: Script de Linea de Comandos
+### Opción 2: Script de Línea de Comandos
 
 ```bash
 # Crear usuario regular
 ./quick_user.sh analyst1 secure_password
 
-# Crear usuario rapido (password = username)
+# Crear usuario rápido (contraseña = nombre de usuario)
 ./quick_user.sh analyst1
 
 # Crear administrador
 ./quick_user.sh admin2 admin_pass admin
 ```
 
-### Opcion 3: Linea de Comandos Directa
+### Opción 3: Línea de Comandos Directa
 
 ```bash
 # Acceder a shell del backend
 docker-compose exec backend bash
 
-# Crear usuario via Python
+# Crear usuario vía Python
 python3 << 'EOF'
 from app.core.database import SessionLocal
 from app.models.user import User
@@ -488,32 +600,32 @@ finally:
 EOF
 ```
 
-### Gestion de Roles
+### Gestión de Roles
 
 ```bash
-# Promover usuario a admin
-./manage_users.sh  # Opcion 4
+# Promover usuario a administrador
+./manage_users.sh  # Opción 4
 
-# Degradar admin a usuario regular
-./manage_users.sh  # Opcion 5
+# Degradar administrador a usuario regular
+./manage_users.sh  # Opción 5
 
 # Ver todos los usuarios y roles
-./manage_users.sh  # Opcion 2
+./manage_users.sh  # Opción 2
 ```
 
 ---
 
 ## Uso del Sistema
 
-### Acceso a la Aplicacion
+### Acceso a la Aplicación
 
-#### Via Dominio (Recomendado)
+#### Vía Dominio (Recomendado)
 
 ```
 https://aquadetection.local
 ```
 
-#### Via IP Directa
+#### Vía IP Directa
 
 ```
 https://10.3.11.101
@@ -522,81 +634,81 @@ https://10.3.11.101
 #### APIs de Backend
 
 ```
-Documentacion Swagger: https://aquadetection.local/api/v1/docs
+Documentación Swagger: https://aquadetection.local/api/v1/docs
 ReDoc: https://aquadetection.local/api/v1/redoc
-OpenAPI JSON: https://aquadetection.local/api/v1/openapi.json
+JSON OpenAPI: https://aquadetection.local/api/v1/openapi.json
 ```
 
-### Login
+### Inicio de Sesión
 
-1. Abre https://aquadetection.local
-2. Ingresa credenciales:
+1. Abra https://aquadetection.local
+2. Ingrese credenciales:
    - Usuario: `admin` o `user`
-   - Contrasena: la contrasena asignada
-3. Click en "Login"
-4. Se generara JWT token valido por 1 hora
+   - Contraseña: la contraseña asignada
+3. Haga clic en "Iniciar Sesión"
+4. Se generará token JWT válido por 1 hora
 
-### Dashboard Principal
+### Panel de Control Principal
 
 **Para Administradores:**
--  Dashboard de amenazas
--  Escaneo de IPs, Hashes, Dominios
--  Gestion de ransomware
--  Gestion de usuarios
--  Logs de auditoria
--  Configuracion del sistema
+- Panel de amenazas
+- Escaneo de IPs, Hashes, Dominios
+- Gestión de ransomware
+- Gestión de usuarios
+- Registros de auditoría
+- Configuración del sistema
 
 **Para Usuarios Regulares:**
--  Dashboard simplificado
--  Escaneo de amenazas
--  Historial de analisis
+- Panel simplificado
+- Escaneo de amenazas
+- Historial de análisis
 
 ### Escaneo de Amenazas
 
-#### Analisis de Hash MD5/SHA256
+#### Análisis de Hash MD5/SHA256
 
 ```
 1. Ir a "Security Engine" -> "Scan"
 2. Seleccionar tipo: "File Hash"
-3. Pegar hash: e.g., d41d8cd98f00b204e9800998ecf8427e
-4. Click "Analyze"
+3. Pegar hash: p. ej., d41d8cd98f00b204e9800998ecf8427e
+4. Haga clic en "Analyze"
 5. Resultados de VirusTotal, URLhaus, etc.
 ```
 
-#### Analisis de IP
+#### Análisis de IP
 
 ```
 1. Ir a "Security Engine" -> "Scan"
 2. Seleccionar tipo: "IP Address"
-3. Ingresar IP: e.g., 192.168.1.1
-4. Click "Analyze"
-5. Resultados de reputacion de AbuseIPDB
+3. Ingresar IP: p. ej., 192.168.1.1
+4. Haga clic en "Analyze"
+5. Resultados de reputación de AbuseIPDB
 ```
 
-#### Analisis de Dominio/URL
+#### Análisis de Dominio/URL
 
 ```
 1. Ir a "Security Engine" -> "Scan"
 2. Seleccionar tipo: "URL"
-3. Ingresar URL: e.g., https://example.com
-4. Click "Analyze"
+3. Ingresar URL: p. ej., https://example.com
+4. Haga clic en "Analyze"
 5. Resultados de VirusTotal y URLhaus
 ```
 
-### Gestion de Ransomware
+### Gestión de Ransomware
 
 **Solo para Administradores:**
 
 ```
 1. Ir a "Ransomware Manager"
 2. Opciones:
-   -  Agregar nuevo IOC
-   -  Buscar IOCs existentes
-   -  Ver estadisticas
-   -  Eliminar IOC
+   - Agregar nuevo IOC
+   - Buscar IOCs existentes
+   - Ver estadísticas
+   - Eliminar IOC
 ```
 
-### Ver Logs de Auditoria
+### Ver Registros de Auditoría
 
 **Solo para Administradores:**
 
@@ -604,17 +716,17 @@ OpenAPI JSON: https://aquadetection.local/api/v1/openapi.json
 1. Ir a "System Logs"
 2. Filtrar por:
    - Usuario
-   - Tipo de accion
+   - Tipo de acción
    - Fecha
    - Resultado (exitoso/fallido)
-3. Ver detalles completos de cada accion
+3. Ver detalles completos de cada acción
 ```
 
 ---
 
-##  API REST Completa
+## API REST Completa
 
-### Autenticacion
+### Autenticación
 
 #### Obtener Token JWT
 
@@ -625,7 +737,7 @@ curl -X POST "https://aquadetection.local/api/v1/auth/login/access-token" \
   -k  # Ignorar certificado autofirmado
 ```
 
-**Response:**
+**Respuesta:**
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -643,7 +755,7 @@ curl -X GET "https://aquadetection.local/api/v1/users/me" \
   -k
 ```
 
-### Endpoints de Escaneo
+### Puntos Finales de Escaneo
 
 #### Escanear Hash (VirusTotal)
 
@@ -655,7 +767,7 @@ curl -X POST "https://aquadetection.local/api/v1/scan/hash" \
   -k
 ```
 
-**Response:**
+**Respuesta:**
 ```json
 {
   "hash": "d41d8cd98f00b204e9800998ecf8427e",
@@ -689,7 +801,7 @@ curl -X POST "https://aquadetection.local/api/v1/scan/url" \
   -k
 ```
 
-### Endpoints de Usuarios (Admin)
+### Puntos Finales de Usuarios (Administrador)
 
 #### Listar Usuarios
 
@@ -721,7 +833,7 @@ curl -X DELETE "https://aquadetection.local/api/v1/users/5" \
   -k
 ```
 
-### Endpoints de Ransomware (Admin)
+### Puntos Finales de Ransomware (Administrador)
 
 #### Agregar IOC
 
@@ -741,12 +853,12 @@ curl -X POST "https://aquadetection.local/api/v1/ransomware/" \
 #### Buscar IOCs
 
 ```bash
-curl -X GET "https://aquadetection.local/api/v1/ransomware/searchquery=hash" \
+curl -X GET "https://aquadetection.local/api/v1/ransomware/search?query=hash" \
   -H "Authorization: Bearer $TOKEN" \
   -k
 ```
 
-### Documentacion Interactiva
+### Documentación Interactiva
 
 ```
 Swagger UI: https://aquadetection.local/api/v1/docs
@@ -757,35 +869,35 @@ ReDoc:      https://aquadetection.local/api/v1/redoc
 
 ## Seguridad Implementada
 
-### 1. Autenticacion
+### 1. Autenticación
 
 ```
- JWT (JSON Web Tokens) con RS256
- Contrasenas hasheadas con bcrypt (rounds=12)
- Token expiration: 1 hora
- Refresh token capability
- Logout / token invalidation
+ JWT (Tokens Web JSON) con RS256
+ Contraseñas procesadas con bcrypt (rounds=12)
+ Expiración del token: 1 hora
+ Capacidad de token de actualización
+ Cierre de sesión / invalidación de token
 ```
 
-### 2. Autorizacion (RBAC)
+### 2. Autorización (RBAC)
 
 ```
- Dos roles: Admin y User
- Endpoints protegidos por rol
+ Dos roles: Administrador y Usuario
+ Puntos finales protegidos por rol
  Acceso granular a funciones
- Admin: Acceso total (usuarios, logs, configuracion)
- User: Solo scans de amenazas
+ Admin: Acceso total (usuarios, registros, configuración)
+ User: Solo escaneos de amenazas
 ```
 
-### 3. Encriptacion TLS/SSL
+### 3. Encriptación TLS/SSL
 
 ```
- TLS 1.3 (y TLS 1.2 como fallback)
- RSA 2048-bit certificates
- Cipher suite: TLS_AES_256_GCM_SHA384
+ TLS 1.3 (y TLS 1.2 como alternativa)
+ Certificados RSA 2048-bit
+ Suite de cifrado: TLS_AES_256_GCM_SHA384
  Perfect Forward Secrecy (PFS)
  Staple OCSP
- HTTP/2 over TLS (h2)
+ HTTP/2 sobre TLS (h2)
 ```
 
 ### 4. Control de Acceso por Red
@@ -793,11 +905,11 @@ ReDoc:      https://aquadetection.local/api/v1/redoc
 ```
  IP Whitelist: Solo 10.3.11.101
  Implementado a nivel Nginx (geo block)
- Logs de intentos rechazados
- DDoS protection (rate limiting)
+ Registros de intentos rechazados
+ Protección contra DDoS (limitación de velocidad)
 ```
 
-### 5. Security Headers
+### 5. Encabezados de Seguridad
 
 ```
 Strict-Transport-Security: max-age=31536000; includeSubDomains
@@ -808,71 +920,71 @@ Referrer-Policy: strict-origin-when-cross-origin
 Content-Security-Policy: default-src 'self'
 ```
 
-### 6. Auditoria y Logging
+### 6. Auditoría y Registro
 
 ```
- Log de todos los logins (exitosos y fallidos)
- Log de cambios de usuarios
- Log de acciones administrativas
- Log de analisis/escaneos
- Timestamps y IP de origen
+ Registro de todos los inicios de sesión (exitosos y fallidos)
+ Registro de cambios de usuarios
+ Registro de acciones administrativas
+ Registro de análisis/escaneos
+ Marcas de tiempo e IP de origen
  Nivel de severidad (INFO, WARNING, ERROR)
- Logs no modificables (append-only)
+ Registros no modificables (solo escritura)
 ```
 
-### 7. Validacion de Datos
+### 7. Validación de Datos
 
 ```
- Pydantic models para type checking
- Input sanitization
- SQL injection prevention (ORM + parameterized queries)
- XSS prevention (React + sanitization)
- CSRF token validation
+ Modelos de Pydantic para verificación de tipos
+ Sanitización de entrada
+ Prevención de inyección SQL (ORM + consultas parametrizadas)
+ Prevención de XSS (React + sanitización)
+ Validación de token CSRF
 ```
 
-### 8. Gestion de Certificados
+### 8. Gestión de Certificados
 
 ```
- Certificados autofirmados para dev (RSA 2048, 1 ano)
- CertBot para Let's Encrypt en produccion
- Auto-renovacion cada 60 dias
- Rollback automatico en fallo de renovacion
- Notificaciones de proximo vencimiento
+ Certificados autofirmados para dev (RSA 2048, 1 año)
+ CertBot para Let's Encrypt en producción
+ Auto-renovación cada 60 días
+ Reversión automática en caso de fallo de renovación
+ Notificaciones de próximo vencimiento
 ```
 
 ### 9. Base de Datos
 
 ```
- PostgreSQL 15 con encriptacion
+ PostgreSQL 15 con encriptación
  Conexiones solo desde Backend (no expuesta)
- Puerto: 5434 (no estandar)
- Usuario especifico con permisos limitados
- Backups automaticos
+ Puerto: 5434 (no estándar)
+ Usuario específico con permisos limitados
+ Copias de seguridad automatizadas
 ```
 
-### 10. Buenas Practicas
+### 10. Mejores Prácticas
 
 ```
- Variables sensibles en .env (no en codigo)
- No logging de passwords
- Rate limiting en endpoints criticos
+ Variables sensibles en .env (no en código)
+ Sin registro de contraseñas
+ Limitación de velocidad en puntos finales críticos
  CORS restrictivo (solo aquadetection.local)
- Secrets no versionados en Git
- Principio de minimo privilegio
+ Secretos no versionados en Git
+ Principio de privilegio mínimo
 ```
 
 ---
 
-##  Deployment en la Nube
+## Implementación en la Nube
 
-### Preparacion para Produccion
+### Preparación para Producción
 
-Antes de deployar, asegurate de:
+Antes de implementar, asegúrese de:
 
 ```bash
-# 1. Cambiar todas las contrasenas por defecto
+# 1. Cambiar todas las contraseñas por defecto
 nano .env
-# Editar: POSTGRES_PASSWORD, SECRET_KEY, admin password
+# Editar: POSTGRES_PASSWORD, SECRET_KEY, contraseña de administrador
 
 # 2. Configurar HTTPS con Let's Encrypt (no autofirmado)
 CERT_TYPE=letsencrypt
@@ -882,14 +994,14 @@ DOMAIN_NAME=aquadetection.yourdomain.com
 # 3. Actualizar IP whitelist
 ALLOWED_IP=your.cloud.server.ip
 
-# 4. Habilitar backups
+# 4. Habilitar copias de seguridad
 docker-compose exec db pg_dump -U aquadetection_user aquadetection_db > backup.sql
 
 # 5. Configurar alertas y monitoreo
-# Ver seccion "Monitoreo"
+# Ver sección "Monitoreo"
 ```
 
-### Opcion 1: AWS EC2
+### Opción 1: AWS EC2
 
 ```bash
 # 1. Crear instancia EC2
@@ -926,13 +1038,13 @@ docker-compose ps
 docker-compose logs nginx | tail -50
 
 # 9. Configurar DNS (Route 53)
-# Apuntar tu dominio al Elastic IP de AWS
+# Apuntar su dominio a la IP Elástica de AWS
 ```
 
-### Opcion 2: Azure Container Instances
+### Opción 2: Instancias de Contenedor de Azure
 
 ```bash
-# 1. Crear container group
+# 1. Crear grupo de contenedores
 az container create \
   --resource-group myResourceGroup \
   --name aquadetection \
@@ -946,7 +1058,7 @@ az container create \
 # Apuntar dominio a la IP de Azure
 ```
 
-### Opcion 3: GCP Compute Engine
+### Opción 3: GCP Compute Engine
 
 ```bash
 # 1. Crear instancia
@@ -965,67 +1077,67 @@ gcloud compute ssh aquadetection
 # 4. Instalar y configurar (igual a AWS)
 ```
 
-### Configuracion de Dominio
+### Configuración de Dominio
 
 #### Con Let's Encrypt (Recomendado)
 
 ```bash
-# El CertBot se configura automaticamente en docker-compose.yml
+# CertBot se configura automáticamente en docker-compose.yml
 
-# 1. Asegurar que el dominio esta configurado en DNS
-# 2. Asegurar que puertos 80 y 443 estan abiertos
+# 1. Asegurar que el dominio está configurado en DNS
+# 2. Asegurar que los puertos 80 y 443 están abiertos
 # 3. En .env:
 CERT_TYPE=letsencrypt
 EMAIL=your-email@yourdomain.com
 DOMAIN_NAME=aquadetection.yourdomain.com
 
-# 4. Iniciar (CertBot generara certificados automaticamente)
+# 4. Iniciar (CertBot generará certificados automáticamente)
 docker-compose up -d
 
 # 5. Verificar certificados
 docker-compose logs certbot | tail -20
 
-# 6. Los certificados se renuevan automaticamente
-# Verificar proxima renovacion
+# 6. Los certificados se renuevan automáticamente
+# Verificar próxima renovación
 docker-compose exec nginx certbot renew --dry-run
 ```
 
-#### Renovacion de Certificados
+#### Renovación de Certificados
 
 ```bash
 # Manual
 docker-compose exec nginx certbot renew
 
-# Automatico (cron job, ejecutado cada dia)
+# Automático (trabajo cron, ejecutado cada día)
 # Ya incluido en docker-compose.yml
 
 # Verificar
 docker-compose logs nginx | grep certbot
 ```
 
-### Backups y Recuperacion
+### Copias de Seguridad y Recuperación
 
 ```bash
-# 1. Backup de base de datos
+# 1. Copia de seguridad de base de datos
 docker-compose exec db pg_dump -U aquadetection_user aquadetection_db > aquadetection_backup_$(date +%Y%m%d).sql
 
-# 2. Backup de configuracion
+# 2. Copia de seguridad de configuración
 tar -czf aquadetection_config_$(date +%Y%m%d).tar.gz .env infrastructure/
 
 # 3. Copiar a almacenamiento seguro (S3, Azure Blob, etc.)
 aws s3 cp aquadetection_backup_*.sql s3://my-bucket/backups/
 
-# 4. Restaurar desde backup
+# 4. Restaurar desde copia de seguridad
 docker-compose exec -T db psql -U aquadetection_user aquadetection_db < aquadetection_backup_20250126.sql
 ```
 
 ### Monitoreo y Alertas
 
 ```bash
-# Ver logs en tiempo real
+# Ver registros en tiempo real
 docker-compose logs -f
 
-# Ver logs especificos
+# Ver registros específicos
 docker-compose logs nginx
 docker-compose logs backend
 docker-compose logs db
@@ -1039,89 +1151,89 @@ docker-compose logs db
 # - Certificado a punto de vencer (Let's Encrypt)
 # - Fallo de servicio
 # - Alto uso de CPU/memoria
-# - Errores en logs del backend
+# - Errores en registros del backend
 ```
 
 ---
 
-##  Solucion de Problemas
+## Solución de Problemas
 
-### Problema 1: "SSL Certificate Error"
+### Problema 1: "Error de Certificado SSL"
 
-**Sintoma:** Browser muestra "Your connection is not private"
+**Síntoma:** El navegador muestra "Su conexión no es privada"
 
 **Causa Probable:** Certificado autofirmado en desarrollo
 
-**Solucion:**
+**Solución:**
 
 ```bash
-# Opcion 1: Ignorar advertencia
+# Opción 1: Ignorar advertencia
 # Avanzado -> Ir a aquadetection.local (inseguro)
 
-# Opcion 2: Importar certificado como confiable
+# Opción 2: Importar certificado como de confianza
 docker-compose exec nginx cat /etc/letsencrypt/live/aquadetection.local/cert.pem > aquadetection.pem
 
 # En macOS:
 open aquadetection.pem
-# Keychain Access -> Always Trust
+# Acceso a Cadena de Claves -> Siempre Confiar
 
 # En Linux:
 sudo cp aquadetection.pem /usr/local/share/ca-certificates/
 sudo update-ca-certificates
 
 # En Windows:
-# Settings -> Certificates -> Import -> Trusted Root
+# Configuración -> Certificados -> Importar -> Raíz de Confianza
 ```
 
-### Problema 2: "Connection Refused" / No se puede acceder
+### Problema 2: "Conexión Rechazada" / No se puede acceder
 
-**Sintoma:** `curl: (7) Failed to connect to aquadetection.local port 443`
+**Síntoma:** `curl: (7) Failed to connect to aquadetection.local port 443`
 
 **Verificar:**
 
 ```bash
-# 1. Docker esta corriendo
+# 1. Docker está ejecutándose
 docker-compose ps
 
-# 2. Nginx esta UP
+# 2. Nginx está UP
 docker-compose logs nginx | tail -20
 
-# 3. Puerto 443 esta disponible
+# 3. El puerto 443 está disponible
 sudo lsof -i :443
 
-# 4. Dominio esta en /etc/hosts
+# 4. El dominio está en /etc/hosts
 cat /etc/hosts | grep aquadetection
 
-# 5. Firewall esta permitiendo 443
+# 5. El cortafuegos permite 443
 sudo ufw allow 443
 ```
 
-**Solucion:**
+**Solución:**
 
 ```bash
 # Reiniciar Nginx
 docker-compose restart nginx
 
-# Verificar configuracion Nginx
+# Verificar configuración de Nginx
 docker-compose exec nginx nginx -t
 
-# Ver logs
+# Ver registros
 docker-compose logs nginx
 ```
 
-### Problema 3: "IP Address Not Allowed"
+### Problema 3: "Dirección IP No Permitida"
 
-**Sintoma:** `403 Forbidden` error
+**Síntoma:** Error `403 Forbidden`
 
-**Causa:** IP no esta en whitelist
+**Causa:** IP no está en whitelist
 
-**Solucion:**
+**Solución:**
 
 ```bash
-# 1. Verificar tu IP actual
+# 1. Verificar su IP actual
 curl ifconfig.me
 
-# 2. Actualizar .env con tu IP
+# 2. Actualizar .env con su IP
 ALLOWED_IP=your.actual.ip.here
 
 # 3. Verificar nginx.conf
@@ -1131,43 +1243,43 @@ docker-compose exec nginx cat /etc/nginx/nginx.conf | grep -A 5 "geo"
 docker-compose exec nginx nginx -s reload
 
 # Alternativa: Deshabilitar whitelist temporalmente (SOLO desarrollo)
-# Comentar linea "deny all" en nginx.conf
+# Comentar línea "deny all" en nginx.conf
 ```
 
-### Problema 4: Database Connection Error
+### Problema 4: Error de Conexión a Base de Datos
 
-**Sintoma:** Backend no puede conectar a PostgreSQL
+**Síntoma:** Backend no puede conectarse a PostgreSQL
 
-**Solucion:**
+**Solución:**
 
 ```bash
-# 1. Verificar PostgreSQL esta corriendo
+# 1. Verificar que PostgreSQL está ejecutándose
 docker-compose ps db
 
 # 2. Verificar credenciales en .env
 grep DATABASE_URL .env
 
-# 3. Conectar directamente a BD
+# 3. Conectarse directamente a BD
 docker-compose exec db psql -U aquadetection_user -d aquadetection_db
 
-# 4. Ver logs de BD
+# 4. Ver registros de BD
 docker-compose logs db
 
 # 5. Reiniciar BD
 docker-compose restart db
 ```
 
-### Problema 5: "Out of Memory"
+### Problema 5: "Falta de Memoria"
 
-**Sintoma:** Docker containers se detienen sin razon
+**Síntoma:** Los contenedores de Docker se detienen sin motivo
 
-**Solucion:**
+**Solución:**
 
 ```bash
 # Ver consumo de memoria
 docker stats
 
-# Reducir limites en docker-compose.yml
+# Reducir límites en docker-compose.yml
 # Agregar:
 # services:
 #   backend:
@@ -1181,21 +1293,21 @@ docker-compose up -d
 
 ### Problema 6: Frontend No Carga
 
-**Sintoma:** Pagina en blanco o "Cannot GET /"
+**Síntoma:** Página en blanco o "Cannot GET /"
 
-**Solucion:**
+**Solución:**
 
 ```bash
-# 1. Verificar frontend esta corriendo
+# 1. Verificar que frontend está ejecutándose
 docker-compose ps frontend
 
-# 2. Ver logs del frontend
+# 2. Ver registros del frontend
 docker-compose logs frontend
 
 # 3. Verificar puerto 3000
 docker-compose exec frontend curl localhost:3000
 
-# 4. Verificar configuracion Nginx
+# 4. Verificar configuración de Nginx
 docker-compose exec nginx cat /etc/nginx/conf.d/default.conf | grep -A 10 "location /"
 
 # 5. Reconstruir frontend
@@ -1205,44 +1317,44 @@ docker-compose up -d frontend
 
 ### Problema 7: API Retorna 401/403
 
-**Sintoma:** "Unauthorized" o "Forbidden"
+**Síntoma:** "Unauthorized" o "Forbidden"
 
 **Verificar:**
 
 ```bash
-# 1. Token valido
+# 1. Token válido
 curl -X POST "https://aquadetection.local/api/v1/auth/login/access-token" \
   -d "username=admin&password=admin123" \
   -k
 
-# 2. Token incluido en request
+# 2. Token incluido en solicitud
 curl -X GET "https://aquadetection.local/api/v1/users/me" \
   -H "Authorization: Bearer $TOKEN" \
   -k
 
 # 3. Token expirado
-# Token valido por 1 hora
+# Token válido por 1 hora
 # Obtener nuevo token
 
 # 4. Usuario existe
-./manage_users.sh  # Ver opcion 2
+./manage_users.sh  # Ver opción 2
 ```
 
-### Problema 8: Certificado Proximo a Vencer
+### Problema 8: Certificado Próximo a Vencer
 
-**Sintoma:** Advertencia en logs sobre certificado vencido
+**Síntoma:** Advertencia en registros sobre certificado vencido
 
-**Solucion:**
+**Solución:**
 
 ```bash
 # 1. Renovar manualmente
 docker-compose exec nginx certbot renew
 
-# 2. Ver proxima renovacion
+# 2. Ver próxima renovación
 docker-compose exec nginx certbot certificates
 
 # 3. Para Let's Encrypt:
-# Se renueva automaticamente 30 dias antes de vencer
+# Se renueva automáticamente 30 días antes de vencer
 
 # 4. Configurar alertas
 # Agregar a crontab:
@@ -1251,7 +1363,7 @@ docker-compose exec nginx certbot certificates
 
 ### Problema 9: Rendimiento Lento
 
-**Sintoma:** Respuestas lentas desde la API
+**Síntoma:** Respuestas lentas desde la API
 
 **Optimizaciones:**
 
@@ -1259,14 +1371,14 @@ docker-compose exec nginx certbot certificates
 # 1. Verificar recursos disponibles
 docker stats
 
-# 2. Ver logs del backend
+# 2. Ver registros del backend
 docker-compose logs backend | grep ERROR
 
-# 3. Aumentar workers Uvicorn
+# 3. Aumentar workers de Uvicorn
 # En backend/main.py:
 # uvicorn.run(..., workers=4)
 
-# 4. Aumentar pool de conexiones PostgreSQL
+# 4. Aumentar grupo de conexiones de PostgreSQL
 # En docker-compose.yml env
 SQLALCHEMY_POOL_SIZE=20
 SQLALCHEMY_MAX_OVERFLOW=40
@@ -1275,16 +1387,16 @@ SQLALCHEMY_MAX_OVERFLOW=40
 # nginx.conf:
 # proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=api_cache:10m;
 
-# 6. Habilitar compresion GZIP
+# 6. Habilitar compresión GZIP
 # Ya habilitado en nginx.conf
 # Verificar:
 curl -I -H "Accept-Encoding: gzip" https://aquadetection.local/
-# Deberia mostrar: Content-Encoding: gzip
+# Debería mostrar: Content-Encoding: gzip
 ```
 
 ---
 
-##  Referencia Tecnica
+## Referencia Técnica
 
 ### Estructura de Carpetas
 
@@ -1292,13 +1404,13 @@ curl -I -H "Accept-Encoding: gzip" https://aquadetection.local/
 aquadetection/
 +-- backend/
 |   +-- app/
-|   |   +-- api/           # Endpoints REST
+|   |   +-- api/           # Puntos finales REST
 |   |   |   +-- auth.py
 |   |   |   +-- logs.py
 |   |   |   +-- ransomware.py
 |   |   |   +-- scan.py
 |   |   |   +-- users.py
-|   |   +-- core/          # Configuracion core
+|   |   +-- core/          # Configuración central
 |   |   |   +-- config.py
 |   |   |   +-- database.py
 |   |   |   +-- encryption.py
@@ -1308,13 +1420,13 @@ aquadetection/
 |   |   |   +-- user.py
 |   |   |   +-- ransomware.py
 |   |   |   +-- audit_log.py
-|   |   +-- services/      # Logica de negocio
+|   |   +-- services/      # Lógica de negocio
 |   |       +-- scan_service.py
 |   |       +-- audit.py
 |   +-- main.py            # Punto de entrada
-|   +-- init_db.py         # Inicializacion BD
-|   +-- Dockerfile         # Build backend
-|   +-- requirements.txt    # Dependencias Python
+|   +-- init_db.py         # Inicialización BD
+|   +-- Dockerfile         # Compilación backend
+|   +-- requirements.txt    # Dependencias de Python
 |
 +-- frontend/
 |   +-- src/
@@ -1327,36 +1439,36 @@ aquadetection/
 |   |   |   +-- api.ts
 |   |   +-- context/       # Context API
 |   |   |   +-- AuthContext.tsx
-|   |   +-- App.tsx        # Root component
-|   |   +-- main.tsx       # Entry point
-|   +-- Dockerfile         # Build frontend
+|   |   +-- App.tsx        # Componente raíz
+|   |   +-- main.tsx       # Punto de entrada
+|   +-- Dockerfile         # Compilación frontend
 |   +-- package.json       # Dependencias npm
-|   +-- vite.config.ts     # Configuracion Vite
-|   +-- tailwind.config.js # Configuracion Tailwind
+|   +-- vite.config.ts     # Configuración Vite
+|   +-- tailwind.config.js # Configuración Tailwind
 |
 +-- infrastructure/
 |   +-- nginx/
-|       +-- Dockerfile     # Build Nginx personalizado
-|       +-- nginx.conf     # Configuracion Nginx
-|       +-- init_certbot.sh # Script inicializacion certificados
-|       +-- renew_certs.sh # Script renovacion certificados
+|       +-- Dockerfile     # Compilación de Nginx personalizado
+|       +-- nginx.conf     # Configuración de Nginx
+|       +-- init_certbot.sh # Script de inicialización de certificados
+|       +-- renew_certs.sh # Script de renovación de certificados
 |
-+-- docker-compose.yml     # Orquestacion servicios
-+-- .env.example          # Template .env
-+-- setup_ssl.sh          # Setup inicial SSL
-+-- aquadetection_ssl.sh         # Comandos SSL
++-- docker-compose.yml     # Orquestación de servicios
++-- .env.example          # Plantilla .env
++-- setup_ssl.sh          # Instalación inicial SSL
++-- malcom_ssl.sh         # Comandos SSL
 +-- start.sh              # Iniciar sistema
 +-- stop.sh               # Detener sistema
-+-- manage_users.sh       # Gestion usuarios interactivo
-+-- quick_user.sh         # Crear usuario rapido
++-- manage_users.sh       # Gestión de usuarios interactiva
++-- quick_user.sh         # Crear usuario rápido
 +-- README.md             # Este archivo
 ```
 
 ### Puertos en Uso
 
-| Puerto | Servicio | Protocolo | Acceso | Descripcion |
+| Puerto | Servicio | Protocolo | Acceso | Descripción |
 |--------|----------|-----------|--------|-------------|
-| **8080** | Nginx | HTTP | Externo | Redireccion a HTTPS (alias para puerto 80) |
+| **8080** | Nginx | HTTP | Externo | Redirección a HTTPS (alias para puerto 80) |
 | **8443** | Nginx | HTTPS | Externo (10.3.11.101) | Reverse proxy (alias para puerto 443) |
 | **3000** | Frontend | HTTP | Interno | React (solo Docker) |
 | **8000** | Backend | HTTP | Interno | FastAPI (solo Docker) |
@@ -1365,14 +1477,14 @@ aquadetection/
 ### Certificados SSL/TLS
 
 ```
-Ubicacion en Docker: /etc/letsencrypt/live/aquadetection.local/
+Ubicación en Docker: /etc/letsencrypt/live/aquadetection.local/
 +-- fullchain.pem  # Certificado + cadena
 +-- privkey.pem    # Clave privada
 +-- cert.pem       # Certificado
 +-- chain.pem      # Cadena de autoridad
 
 Volumen Docker: certbot_data
-Renovacion automatica: Cada 60 dias (Let's Encrypt)
+Renovación automática: Cada 60 días (Let's Encrypt)
 Algoritmo: RSA 2048-bit
 Protocolo: TLS 1.2, TLS 1.3
 ```
@@ -1383,14 +1495,14 @@ Protocolo: TLS 1.2, TLS 1.3
 # SSL/TLS
 DOMAIN_NAME              # Dominio del sistema
 CERT_TYPE               # 'self-signed' o 'letsencrypt'
-EMAIL                   # Email para Let's Encrypt
+EMAIL                   # Correo electrónico para Let's Encrypt
 ALLOWED_IP              # IP whitelist
 
 # Base de Datos
 POSTGRES_USER           # Usuario PostgreSQL
-POSTGRES_PASSWORD       # Contrasena PostgreSQL
-POSTGRES_DB             # Nombre base de datos
-DATABASE_URL            # URL conexion completa
+POSTGRES_PASSWORD       # Contraseña de PostgreSQL
+POSTGRES_DB             # Nombre de la base de datos
+DATABASE_URL            # URL de conexión completa
 
 # Backend
 SECRET_KEY              # Clave para JWT (min 32 chars)
@@ -1398,18 +1510,18 @@ ENVIRONMENT             # 'development' o 'production'
 LOG_LEVEL              # DEBUG, INFO, WARNING, ERROR
 
 # APIs Externas
-VIRUSTOTAL_API_KEY      # API key VirusTotal
-ABUSEIPDB_API_KEY       # API key AbuseIPDB
+VIRUSTOTAL_API_KEY      # Clave de API VirusTotal
+ABUSEIPDB_API_KEY       # Clave de API AbuseIPDB
 
 # CORS
-CORS_ORIGINS            # Origenes permitidos
-SESSION_TIMEOUT         # Timeout sesion (segundos)
+CORS_ORIGINS            # Orígenes permitidos
+SESSION_TIMEOUT         # Tiempo de espera de sesión (segundos)
 ```
 
-### Comandos Docker Utiles
+### Comandos Docker Útiles
 
 ```bash
-# Ver logs en tiempo real
+# Ver registros en tiempo real
 docker-compose logs -f [servicio]
 
 # Ejecutar comando en contenedor
@@ -1421,13 +1533,13 @@ docker-compose restart [servicio]
 # Reconstruir imagen
 docker-compose build [servicio]
 
-# Ver consumo recursos
+# Ver consumo de recursos
 docker stats
 
-# Copiar archivo de contenedor
+# Copiar archivo del contenedor
 docker-compose cp [servicio]:/ruta/archivo ./local/
 
-# Ver volumenes
+# Ver volúmenes
 docker volume ls
 docker volume inspect aquadetection_certbot_data
 
@@ -1437,50 +1549,50 @@ docker-compose down -v
 
 ### Scripts Disponibles
 
-| Script | Proposito | Uso |
+| Script | Propósito | Uso |
 |--------|----------|-----|
 | `start.sh` | Iniciar sistema | `./start.sh` |
 | `stop.sh` | Detener sistema | `./stop.sh` |
-| `setup_ssl.sh` | Configuracion SSL inicial | `./setup_ssl.sh` |
-| `aquadetection_ssl.sh` | Comandos SSL/gestion | `./aquadetection_ssl.sh [comando]` |
-| `manage_users.sh` | Gestion usuarios interactivo | `./manage_users.sh` |
-| `quick_user.sh` | Crear usuario rapido | `./quick_user.sh [user] [pass] [admin]` |
+| `setup_ssl.sh` | Configuración SSL inicial | `./setup_ssl.sh` |
+| `malcom_ssl.sh` | Comandos SSL/gestión | `./malcom_ssl.sh [comando]` |
+| `manage_users.sh` | Gestión de usuarios interactiva | `./manage_users.sh` |
+| `quick_user.sh` | Crear usuario rápido | `./quick_user.sh [usuario] [pass] [admin]` |
 
-### Troubleshooting Avanzado
+### Solución Avanzada de Problemas
 
 #### Verificar Certificado SSL
 
 ```bash
 # Ver detalles del certificado
-openssl x509 -in /path/to/cert.pem -text -noout
+openssl x509 -in /ruta/a/cert.pem -text -noout
 
-# Verificar certificado esta en servidor
+# Verificar certificado está en servidor
 openssl s_client -connect aquadetection.local:443 -servername aquadetection.local
 
 # Validar cadena de certificados
-openssl verify -CAfile /path/to/chain.pem cert.pem
+openssl verify -CAfile /ruta/a/chain.pem cert.pem
 
-# Ver proxima fecha de vencimiento
+# Ver próxima fecha de vencimiento
 openssl x509 -enddate -noout -in cert.pem
 ```
 
-#### Verificar Configuracion Nginx
+#### Verificar Configuración de Nginx
 
 ```bash
 # Validar sintaxis
 docker-compose exec nginx nginx -t
 
-# Ver configuracion cargada
+# Ver configuración cargada
 docker-compose exec nginx nginx -T
 
 # Ver puertos escuchando
 docker-compose exec nginx netstat -tuln | grep LISTEN
 ```
 
-#### Verificar Conectividad Base de Datos
+#### Verificar Conectividad a Base de Datos
 
 ```bash
-# Conectar a PostgreSQL
+# Conectarse a PostgreSQL
 docker-compose exec db psql -U aquadetection_user -d aquadetection_db
 
 # Listar tablas
@@ -1501,18 +1613,18 @@ docker-compose exec [servicio] env | sort
 
 ---
 
-##  Soporte y Contacto
+## Soporte y Contacto
 
-### Documentacion Interna
+### Documentación Interna
 
-- **API Docs Swagger:** https://aquadetection.local/api/v1/docs
+- **Documentación de API Swagger:** https://aquadetection.local/api/v1/docs
 - **ReDoc:** https://aquadetection.local/api/v1/redoc
-- **OpenAPI JSON:** https://aquadetection.local/api/v1/openapi.json
+- **JSON OpenAPI:** https://aquadetection.local/api/v1/openapi.json
 
-### Logs y Debugging
+### Registros y Depuración
 
 ```bash
-# Logs centralizados
+# Registros centralizados
 docker-compose logs -f
 
 # Por servicio
@@ -1521,60 +1633,60 @@ docker-compose logs -f frontend
 docker-compose logs -f nginx
 docker-compose logs -f db
 
-# Estadisticas
+# Estadísticas
 docker stats
 ```
 
 ### Reporte de Problemas
 
 Incluir:
-1. Output de `docker-compose ps`
-2. Output de `docker-compose logs [servicio]`
-3. Logs de navegador (F12)
+1. Salida de `docker-compose ps`
+2. Salida de `docker-compose logs [servicio]`
+3. Registros del navegador (F12)
 4. Comando exacto que causa el problema
-5. Output esperado vs real
+5. Salida esperada vs. real
 
 ---
 
-##  Changelog
+## Registro de Cambios
 
-### v2.0 (SSL/HTTPS Migration) - 2025-01-26
+### v2.0 (SSL/HTTPS Migration) - 26 de enero de 2025
 
-**Nuevas Caracteristicas:**
--  HTTPS/TLS 1.3 encryption
--  Certificados SSL con CertBot
--  IP Whitelist (10.3.11.101)
--  Nginx reverse proxy
--  Security headers
--  HTTP/2 protocol
--  GZIP compression
--  Audit logging completo
--  Cloud deployment ready (AWS, Azure, GCP)
+**Nuevas Características:**
+- Encriptación HTTPS/TLS 1.3
+- Certificados SSL con CertBot
+- IP Whitelist (10.3.11.101)
+- Reverse proxy Nginx
+- Encabezados de seguridad
+- Protocolo HTTP/2
+- Compresión GZIP
+- Registro de auditoría completo
+- Listo para implementación en la nube (AWS, Azure, GCP)
 
-**Cambios Tecnicos:**
-- Migracion de localhost a dominio `aquadetection.local`
+**Cambios Técnicos:**
+- Migración de localhost a dominio `aquadetection.local`
 - Puertos: 8082/8083 -> 80/443 (Nginx)
-- Docker Compose v2 restructure
-- .env obligatorio para configuracion
-- Scripts de gestion mejorados
+- Reestructuración de Docker Compose v2
+- .env obligatorio para configuración
+- Scripts de gestión mejorados
 
 **Deprecaciones:**
 - HTTP inseguro (localhost)
 - Puertos 8082/8083
 
-### v1.0 (Initial Release)
+### v1.0 (Lanzamiento Inicial)
 
 - Infraestructura base con Docker
-- FastAPI backend
-- React frontend
-- PostgreSQL database
-- JWT authentication
+- Backend FastAPI
+- Frontend React
+- Base de datos PostgreSQL
+- Autenticación JWT
 - Escaneo de amenazas
-- Gestion de ransomware
-- Logs de auditoria
+- Gestión de ransomware
+- Registros de auditoría
 
 ---
 
-**Hecho con  para seguridad en la nube**
+**Hecho con dedicación para seguridad en la nube**
 
-**Ultima Actualizacion:** 26 de enero de 2025
+**Última Actualización:** 26 de enero de 2025

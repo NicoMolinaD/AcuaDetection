@@ -11,15 +11,15 @@ echo "=========================================="
 echo ""
 
 # Variables
-DOMAIN_NAME="aquadetection.local"
-ALLOWED_IP="10.3.11.101"
-ENV_FILE=".env"
+NOMBRE_DOMINIO="aquadetection.local"
+IP_PERMITIDA="10.3.11.101"
+ARCHIVO_ENV=".env"
 
 # 1. Crear archivo .env si no existe
-if [ ! -f "$ENV_FILE" ]; then
+if [ ! -f "$ARCHIVO_ENV" ]; then
     echo " Creando archivo .env..."
-    cp .env.example "$ENV_FILE"
-    echo " Archivo .env creado (por favor revisa y completa si es necesario)"
+    cp .env.example "$ARCHIVO_ENV"
+    echo " Archivo .env creado (revise y complete si es necesario)"
 else
     echo " Archivo .env ya existe"
 fi
@@ -28,18 +28,18 @@ fi
 echo ""
 echo " Verificando archivos de configuración..."
 
-FILES=(
+ARCHIVOS=(
     "infrastructure/nginx/nginx.conf"
     "infrastructure/nginx/Dockerfile"
     "infrastructure/nginx/init_certbot.sh"
     "infrastructure/nginx/renew_certs.sh"
 )
 
-for file in "${FILES[@]}"; do
-    if [ -f "$file" ]; then
-        echo " $file"
+for archivo in "${ARCHIVOS[@]}"; do
+    if [ -f "$archivo" ]; then
+        echo " $archivo"
     else
-        echo " [FAILED] Falta: $file"
+        echo " [FALLO] Falta: $archivo"
         exit 1
     fi
 done
@@ -51,33 +51,33 @@ echo " Configurando /etc/hosts..."
 if grep -q "aquadetection.local" /etc/hosts 2>/dev/null; then
     echo " aquadetection.local ya está en /etc/hosts"
 else
-    echo "[WARN]  Necesitas agregar manualmente a /etc/hosts:"
+    echo "[ADVERTENCIA]  Necesita agregar manualmente a /etc/hosts:"
     echo "   127.0.0.1       aquadetection.local"
     echo "   10.3.11.101     aquadetection.local"
 fi
 
 # 4. Crear directorios de volúmenes
 echo ""
-echo "📁 Creando directorios necesarios..."
+echo "Creando directorios requeridos"
 mkdir -p infrastructure/nginx/conf.d
 echo " Directorios creados"
 
 # 5. Información de configuración
 echo ""
 echo "=========================================="
-echo "[OK] Configuración completada"
+echo "[EXITOSO] Configuración completada"
 echo "=========================================="
 echo ""
 echo " Configuración actual:"
-echo "   • Dominio: $DOMAIN_NAME"
-echo "   • IP permitida: $ALLOWED_IP"
+echo "   • Dominio: $NOMBRE_DOMINIO"
+echo "   • IP permitida: $IP_PERMITIDA"
 echo "   • Puertos: 80 (HTTP) → 443 (HTTPS)"
-echo "   • Certificados: /etc/letsencrypt/live/$DOMAIN_NAME/"
+echo "   • Certificados: /etc/letsencrypt/live/$NOMBRE_DOMINIO/"
 echo ""
 echo " Próximos pasos:"
-echo "   1. Edita .env si necesitas cambios"
-echo "   2. Ejecuta: docker-compose up -d"
-echo "   3. Accede a: https://$DOMAIN_NAME"
+echo "   1. Edite .env si necesita cambios"
+echo "   2. Ejecute: docker-compose up -d"
+echo "   3. Acceda a: https://$NOMBRE_DOMINIO"
 echo ""
 echo "📖 Para más información, lee: SSL_TLS_SETUP.md"
 echo "=========================================="

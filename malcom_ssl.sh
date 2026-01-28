@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#  Quick Reference - Comandos Útiles para Malcom SSL
+# Referencia Rápida - Comandos Útiles para Malcom SSL
 
-echo " Malcom SSL/TLS - Quick Reference"
+echo " Malcom SSL/TLS - Referencia Rápida"
 echo "===================================="
 echo ""
-echo "📍 Antes de empezar:"
-echo "   1. Ejecuta: ./setup_ssl.sh"
-echo "   2. Lee: SSL_TLS_SETUP.md"
+echo "Antes de empezar:"
+echo "   1. Ejecute: ./setup_ssl.sh"
+echo "   2. Lea: SSL_TLS_SETUP.md"
 echo ""
 
 case "$1" in
@@ -15,25 +15,25 @@ case "$1" in
   start)
     echo " Iniciando aplicación..."
     docker-compose up -d
-    echo "✓ Esperando 15 segundos para que se generen certificados..."
+    echo " Esperando 15 segundos para que se generen certificados..."
     sleep 15
-    echo "✓ Aplicación iniciada"
-    echo "📍 Accede a: https://malcom.local"
+    echo " Aplicación iniciada"
+    echo "Acceda a: https://malcom.local"
     ;;
 
   stop)
-    echo "🛑 Deteniendo aplicación..."
+    echo "Deteniendo aplicación..."
     docker-compose down
-    echo "✓ Detenido"
+    echo " Detenido"
     ;;
 
   logs)
-    echo "📜 Mostrando logs de Nginx..."
+    echo "Mostrando logs de Nginx..."
     docker-compose logs -f nginx
     ;;
 
   logs-backend)
-    echo "📜 Mostrando logs del Backend..."
+    echo "Mostrando logs del Backend..."
     docker-compose logs -f backend
     ;;
 
@@ -48,46 +48,46 @@ case "$1" in
     ;;
 
   cert-renew)
-    echo "🔄 Renovando certificados..."
+    echo "Renovando certificados..."
     docker exec malcom_nginx certbot renew
     docker exec malcom_nginx nginx -s reload
-    echo "✓ Certificados renovados"
+    echo " Certificados renovados"
     ;;
 
   test-https)
-    echo "🧪 Probando conexión HTTPS..."
+    echo "Probando conexión HTTPS..."
     curl -k -v https://malcom.local/ 2>&1 | head -20
     ;;
 
   test-http-redirect)
-    echo "🧪 Probando redirección HTTP → HTTPS..."
+    echo "Probando redirección HTTP → HTTPS..."
     curl -I http://malcom.local/
     ;;
 
   test-ip-block)
-    echo "🧪 Probando bloqueo de IP (desde otra IP)..."
-    echo "[WARN]  Este test solo funciona desde una IP diferente a 10.3.11.101"
+    echo "Probando bloqueo de IP (desde otra IP)..."
+    echo "[ADVERTENCIA]  Este test solo funciona desde una IP diferente a 10.3.11.101"
     curl -k https://192.168.1.1/ 2>&1
     ;;
 
   nginx-reload)
-    echo "♻️  Recargando Nginx (sin parar)..."
+    echo "Recargando Nginx (sin interrupción de servicio)"
     docker exec malcom_nginx nginx -s reload
-    echo "✓ Nginx recargado"
+    echo " Nginx recargado"
     ;;
 
   nginx-test)
-    echo " Validando configuración de Nginx..."
+    echo " Validando configuración de Nginx"
     docker exec malcom_nginx nginx -t
     ;;
 
   clean)
-    echo "🧹 Limpiando todo (incluyendo volúmenes y datos)..."
-    read -p "¿Estás seguro? [s/n] " -n 1 -r
+    echo "Limpiando (incluyendo volúmenes y datos)"
+    read -p "¿Está seguro? [s/n] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Ss]$ ]]; then
       docker-compose down -v
-      echo "✓ Limpieza completada"
+      echo "Limpieza completada"
     fi
     ;;
 
@@ -100,7 +100,7 @@ case "$1" in
     echo "  ./malcom_ssl.sh logs               - Ver logs de Nginx"
     echo "  ./malcom_ssl.sh logs-backend       - Ver logs del Backend"
     echo ""
-    echo "  ./malcom_ssl.sh cert-check         - Ver info del certificado"
+    echo "  ./malcom_ssl.sh cert-check         - Ver información del certificado"
     echo "  ./malcom_ssl.sh cert-renew         - Renovar certificados"
     echo ""
     echo "  ./malcom_ssl.sh test-https         - Probar HTTPS"
@@ -120,8 +120,8 @@ case "$1" in
     ;;
 
   *)
-    echo "[FAILED] Comando no reconocido: $1"
-    echo "Ejecuta: ./malcom_ssl.sh help"
+    echo "[FALLO] Comando no reconocido: $1"
+    echo "Ejecute: ./malcom_ssl.sh help"
     exit 1
     ;;
 
