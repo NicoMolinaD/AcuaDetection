@@ -7,6 +7,7 @@ import asyncio
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.exceptions import MalcomException
+from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 
@@ -31,6 +32,67 @@ class ScanService:
         
         if "." in target: return "Domain"
         return "unknown"
+
+    def check_ransomware_database(self, target: str, target_type: str, db: Session = None):
+        """Check if target is in local ransomware database"""
+        if not db:
+            return None
+        
+        try:
+            from app.models.ransomware import Ransomware
+            
+            # Query ransomware entries to check if target (hash, IP, or domain) exists
+            ransomware_entries = db.query(Ransomware).all()
+            
+            for entry in ransomware_entries:
+                # Check hashes
+                if target_type in ["MD5", "SHA1", "SHA256"] and entry.hashes:
+                    if isinstance(entry.hashes, dict):
+                        hash_values = entry.hashes.values() if entry.hashes else []
+                    else:
+                        hash_values = entry.hashes if entry.hashes else []
+                    
+                    if target.lower() in [h.lower() for h in hash_values if h]:
+                        return {
+                            "source": "AquaDetection",
+                            "engine": "Ransomware DB",
+                            "result": f"Malware encontrado en base de datos: {entry.name}",
+                            "category": "malicious"
+                        }
+                
+                # Check IPs
+                if target_type == "IP" and entry.ips:
+                    if isinstance(entry.ips, dict):
+                        ip_values = entry.ips.values() if entry.ips else []
+                    else:
+                        ip_values = entry.ips if entry.ips else []
+                    
+                    if target in ip_values:
+                        return {
+                            "source": "AquaDetection",
+                            "engine": "Ransomware DB",
+                            "result": f"IP malicioso encontrado en base de datos: {entry.name}",
+                            "category": "malicious"
+                        }
+                
+                # Check domains
+                if target_type == "Domain" and entry.domains:
+                    if isinstance(entry.domains, dict):
+                        domain_values = entry.domains.values() if entry.domains else []
+                    else:
+                        domain_values = entry.domains if entry.domains else []
+                    
+                    if target.lower() in [d.lower() for d in domain_values if d]:
+                        return {
+                            "source": "AquaDetection",
+                            "engine": "Ransomware DB",
+                            "result": f"Dominio malicioso encontrado en base de datos: {entry.name}",
+                            "category": "malicious"
+                        }
+        except Exception as e:
+            logger.error(f"Error checking ransomware database: {str(e)}")
+        
+        return None
 
     async def check_virustotal(self, target: str, target_type: str):
         if not settings.VT_API_KEY: 
@@ -222,8 +284,11 @@ class ScanService:
             logger.error(f"PhishTank Error: {e}")
         return [{"source": "PhishTank", "engine": "Phishing Detector", "result": "No disponible", "category": "info"}]
 
-    async def scan_target(self, target: str, filename: str = None):
+    async def scan_target(self, target: str, filename: str = None, db: Session = None):
         target_type = self.identify_hash_type(target)
+        
+        # Check if target (hash, IP, domain) is in ransomware database
+        ransomware_detection = self.check_ransomware_database(target, target_type, db)
         
         tasks = [
             self.check_virustotal(target, target_type),
@@ -238,6 +303,11 @@ class ScanService:
         
         # Flatten all detailed results
         all_details = []
+        
+        # Add ransomware database detection first if found
+        if ransomware_detection:
+            all_details.append(ransomware_detection)
+        
         for r in results:
             if r:
                 all_details.extend(r)

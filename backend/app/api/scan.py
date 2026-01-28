@@ -24,7 +24,7 @@ async def scan(
     if not target:
         raise BadRequestException("El objetivo es requerido")
         
-    result = await scan_service.scan_target(target, filename=filename)
+    result = await scan_service.scan_target(target, filename=filename, db=db)
     
     import json
     log_action(db, current_user.id, "SCAN_TARGET", process_name="SCANNER", details=json.dumps(result))
