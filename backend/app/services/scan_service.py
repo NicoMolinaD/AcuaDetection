@@ -171,33 +171,6 @@ class ScanService:
             logger.error(f"VT Error: {e}")
         return [{"source": "VirusTotal", "engine": "Scanner", "result": "Error de conexión", "category": "info"}]
 
-    async def check_hybrid_analysis(self, target: str, target_type: str):
-        if not settings.HA_API_KEY:
-            return [{"source": "HybridAnalysis", "engine": "Sandbox", "result": "Clave API no configurada", "category": "info"}]
-        if target_type not in ["MD5", "SHA1", "SHA256"]:
-            return []
-            
-        url = "https://hybrid-analysis.com/api/v2/search/hash"
-        headers = {**self.headers, 'api-key': settings.HA_API_KEY}
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(url, headers=headers, data={'hash': target})
-                if response.status_code == 200:
-                    data = response.json()
-                    if isinstance(data, list) and data:
-                        res = data[0]
-                        verdict = res.get('verdict', 'Clean')
-                        return [{
-                            "source": "HybridAnalysis", 
-                            "engine": "Sandbox", 
-                            "result": f"Score: {res.get('threat_score', 0)}", 
-                            "category": "malicious" if verdict in ["malicious", "suspicious"] else "harmless"
-                        }]
-                    return [{"source": "HybridAnalysis", "engine": "Sandbox", "result": "Limpio / No encontrado", "category": "harmless"}]
-        except Exception as e:
-            logger.error(f"HA Error: {e}")
-        return [{"source": "HybridAnalysis", "engine": "Sandbox", "result": "Error", "category": "info"}]
-
     async def check_abuseipdb(self, target: str, target_type: str):
         if not settings.ABUSEIPDB_API_KEY:
              return [{"source": "AbuseIPDB", "engine": "IP Reputation", "result": "Clave API no configurada", "category": "info"}]
@@ -228,10 +201,10 @@ class ScanService:
         if target_type not in ["MD5", "SHA1", "SHA256"]: return []
         
         url = "https://mb-api.abuse.ch/api/v1/"
-        data = {'query': 'get_info', 'hash': target}
+        data = {'query': 'get_info', 'hash': target, 'api_token': settings.MALWAREBAZAAR_API_KEY}
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.post(url, data=data)
+                response = await client.post(url, data=data, timeout=30)
                 if response.status_code == 200:
                     res = response.json()
                     if res.get('query_status') == 'ok':
@@ -241,10 +214,16 @@ class ScanService:
                             "result": "Malicioso Detectado", 
                             "category": "malicious"
                         }]
-                    return [{"source": "MalwareBazaar", "engine": "Database", "result": "Limpio / No encontrado", "category": "harmless"}]
+                    elif res.get('query_status') == 'not_found':
+                        return [{"source": "MalwareBazaar", "engine": "Database", "result": "Limpio / No encontrado", "category": "harmless"}]
+                    return [{"source": "MalwareBazaar", "engine": "Database", "result": f"Status: {res.get('query_status', 'unknown')}", "category": "info"}]
+                elif response.status_code == 401:
+                    return [{"source": "MalwareBazaar", "engine": "Database", "result": "API Key inválida", "category": "info"}]
+                else:
+                    return [{"source": "MalwareBazaar", "engine": "Database", "result": f"Error {response.status_code}", "category": "info"}]
         except Exception as e:
             logger.error(f"MalwareBazaar Error: {e}")
-        return [{"source": "MalwareBazaar", "engine": "Database", "result": "Error", "category": "info"}]
+        return [{"source": "MalwareBazaar", "engine": "Database", "result": "Error de conexión", "category": "info"}]
 
     async def check_malshare(self, target: str, target_type: str):
         if not settings.MALSHARE_API_KEY:
@@ -266,24 +245,6 @@ class ScanService:
              logger.error(f"MalShare Error: {e}")
         return [{"source": "MalShare", "engine": "Database", "result": "Error", "category": "info"}]
 
-    async def check_phishtank(self, target: str, target_type: str):
-        if target_type != "URL": return []
-        url = "https://checkurl.phishtank.com/checkurl/"
-        data = {'url': target, 'format': 'json'}
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(url, data=data)
-                if response.status_code == 200:
-                    res = response.json().get('results', {})
-                    if res.get('in_database'):
-                        return [{
-                            "source": "PhishTank", "engine": "Phishing Detector", "result": "URL Maliciosa", "category": "malicious"
-                        }]
-                    return [{"source": "PhishTank", "engine": "Phishing Detector", "result": "Limpio", "category": "harmless"}]
-        except Exception as e:
-            logger.error(f"PhishTank Error: {e}")
-        return [{"source": "PhishTank", "engine": "Phishing Detector", "result": "No disponible", "category": "info"}]
-
     async def scan_target(self, target: str, filename: str = None, db: Session = None):
         target_type = self.identify_hash_type(target)
         
@@ -292,11 +253,9 @@ class ScanService:
         
         tasks = [
             self.check_virustotal(target, target_type),
-            self.check_hybrid_analysis(target, target_type),
             self.check_abuseipdb(target, target_type),
             self.check_malwarebazaar(target, target_type),
-            self.check_malshare(target, target_type),
-            self.check_phishtank(target, target_type)
+            self.check_malshare(target, target_type)
         ]
         
         results = await asyncio.gather(*tasks)
@@ -319,11 +278,9 @@ class ScanService:
         # Ensure at least one result per source for UI visibility if keys exist
         sources_expected = {
             "VirusTotal": settings.VT_API_KEY,
-            "HybridAnalysis": settings.HA_API_KEY,
             "AbuseIPDB": settings.ABUSEIPDB_API_KEY,
             "MalwareBazaar": settings.MALWAREBAZAAR_API_KEY,
-            "MalShare": settings.MALSHARE_API_KEY,
-            "PhishTank": True # Free
+            "MalShare": settings.MALSHARE_API_KEY
         }
         
         present_sources = {r['source'] for r in all_details}
@@ -334,7 +291,7 @@ class ScanService:
                     "source": source, "engine": "Scanner", "result": res_text, "category": "info"
                 })
 
-        has_real_config = any([settings.VT_API_KEY, settings.HA_API_KEY, settings.ABUSEIPDB_API_KEY])
+        has_real_config = any([settings.VT_API_KEY, settings.ABUSEIPDB_API_KEY, settings.MALWAREBAZAAR_API_KEY])
         if not all_details or (malicious == 0 and suspicious == 0 and harmless == 0 and not has_real_config):
             return self.generate_mock_response(target, target_type, filename)
         
