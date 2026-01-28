@@ -29,7 +29,16 @@ export const ScanResults: React.FC<ScanResultsProps> = ({ data, activeTab, batch
     return (
         <div className="space-y-8 animate-fade-in">
             <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">Resultados del Escaneo</h2>
+                <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-bold text-white">Resultados del Escaneo</h2>
+                    <span className={`text-sm font-semibold px-3 py-1 rounded-full ${
+                        data.mode === 'demo' 
+                            ? 'bg-amber-900/30 text-amber-300 border border-amber-700/50' 
+                            : 'bg-emerald-900/30 text-emerald-300 border border-emerald-700/50'
+                    }`}>
+                        {data.mode === 'demo' ? '⚠️ MODO DEMO' : '✓ ANÁLISIS EN VIVO'}
+                    </span>
+                </div>
                 <button
                     onClick={goBackToList}
                     className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 hover:border-emerald-500/50 text-emerald-400 rounded-lg transition-all font-medium shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 z-10"
@@ -38,6 +47,16 @@ export const ScanResults: React.FC<ScanResultsProps> = ({ data, activeTab, batch
                     {batchQueueLength > 0 ? 'Volver a la Lista' : 'Nuevo Escaneo'}
                 </button>
             </div>
+
+            {data.mode === 'demo' && (
+                <div className="bg-amber-900/20 border border-amber-700/50 rounded-lg p-4 flex items-start gap-3">
+                    <div className="text-2xl">⚠️</div>
+                    <div>
+                        <p className="text-amber-200 font-semibold mb-1">Modo Demostración</p>
+                        <p className="text-amber-300 text-sm">Las claves de API no están configuradas. Los resultados mostrados son limitados. Configure las API keys en el backend para obtener análisis en vivo contra VirusTotal, MalwareBazaar y otros motores de detección.</p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-gray-900 border border-red-900/30 rounded-2xl p-6 relative overflow-hidden group">

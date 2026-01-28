@@ -50,24 +50,61 @@ class ScanService:
         
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers)
+                response = await client.get(url, headers=headers, timeout=30)
                 if response.status_code == 200:
                     data = response.json()
                     attr = data.get('data', {}).get('attributes', {})
                     results = attr.get('last_analysis_results', {})
                     
+                    # Count detections by category
+                    malicious_count = 0
+                    suspicious_count = 0
+                    harmless_count = 0
+                    undetected_count = 0
+                    
                     detailed = []
                     for engine, res in results.items():
-                        cat = res.get('category', 'harmless')
-                        if cat == 'undetected': cat = 'harmless'
-                        result_text = res.get('result') or 'Clean'
+                        cat = res.get('category', 'undetected')
+                        result_text = res.get('result') or 'Not detected'
+                        
+                        # Normalize categories from VirusTotal
+                        if cat == 'undetected':
+                            cat = 'harmless'
+                            undetected_count += 1
+                        elif cat == 'malicious':
+                            malicious_count += 1
+                        elif cat == 'suspicious':
+                            suspicious_count += 1
+                        elif cat == 'harmless':
+                            harmless_count += 1
+                        else:
+                            cat = 'harmless'
+                            harmless_count += 1
+                        
                         detailed.append({
-                            "source": "VirusTotal", "engine": engine, 
-                            "result": result_text, "category": cat
+                            "source": "VirusTotal", 
+                            "engine": engine, 
+                            "result": result_text, 
+                            "category": cat
                         })
-                    return detailed
+                    
+                    # If we have any detections, add a summary
+                    if malicious_count > 0 or suspicious_count > 0:
+                        summary_cat = "malicious" if malicious_count > 0 else "suspicious"
+                        summary_result = f"Detected: {malicious_count} malicious, {suspicious_count} suspicious"
+                        detailed.insert(0, {
+                            "source": "VirusTotal",
+                            "engine": "Summary",
+                            "result": summary_result,
+                            "category": summary_cat
+                        })
+                    
+                    return detailed if detailed else [{"source": "VirusTotal", "engine": "Scanner", "result": "Clean", "category": "harmless"}]
                 elif response.status_code == 404:
                     return [{"source": "VirusTotal", "engine": "Scanner", "result": "No encontrado", "category": "harmless"}]
+                else:
+                    logger.warning(f"VT API returned {response.status_code}: {response.text}")
+                    return [{"source": "VirusTotal", "engine": "Scanner", "result": f"API Error {response.status_code}", "category": "info"}]
         except Exception as e:
             logger.error(f"VT Error: {e}")
         return [{"source": "VirusTotal", "engine": "Scanner", "result": "Error de conexión", "category": "info"}]
@@ -245,31 +282,43 @@ class ScanService:
         }
 
     def generate_mock_response(self, target: str, target_type: str, filename: str = None):
-        risk_score = 0
-        
-        safe_extensions = ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.txt', '.csv', '.bmp', '.svg']
+        """Generate a response when real APIs are not available"""
+        # Safe file extensions that are typically harmless
+        safe_extensions = ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.txt', '.csv', '.bmp', '.svg', '.doc', '.docx', '.xlsx', '.pptx']
         target_to_check = filename or target
-        if any(target_to_check.lower().endswith(ext) for ext in safe_extensions):
-            risk_score = 0
-        elif target in ['127.0.0.1', '8.8.8.8']: risk_score = 0
-        elif "test" in target or "virus" in target: risk_score = 90
-        elif target_type in ["MD5", "SHA1", "SHA256"]: 
-            if target:
-                 seed = sum(ord(c) for c in target)
-                 risk_score = seed % 100
         
-        malicious = 0
-        if risk_score > 50: malicious = int(risk_score / 10)
+        # Check if file extension is safe
+        is_safe_extension = any(target_to_check.lower().endswith(ext) for ext in safe_extensions)
         
+        # Check if it's a known safe target
+        is_safe_target = target in ['127.0.0.1', '8.8.8.8', 'localhost', '127.0.0.1:80', '127.0.0.1:8000']
+        
+        # If it's a safe extension or safe target, mark as harmless
+        if is_safe_extension or is_safe_target:
+            scans = [
+                {"source": "VirusTotal", "engine": "Scanner", "result": "Clean", "category": "harmless"},
+                {"source": "HybridAnalysis", "engine": "Sandbox", "result": "No threat detected", "category": "harmless"},
+                {"source": "MalwareBazaar", "engine": "Database", "result": "Not found", "category": "harmless"},
+                {"source": "MalShare", "engine": "Database", "result": "Not found", "category": "harmless"}
+            ]
+            return {
+                "summary": {"malicious": 0, "suspicious": 0, "harmless": 4, "undetected": 0},
+                "scans": scans,
+                "mode": "demo",
+                "target": target,
+                "target_type": target_type
+            }
+        
+        # For unknown hashes/targets in demo mode, return "unknown" verdict
+        # This prevents false positives from random hash generation
         scans = [
-            {"source": "VirusTotal", "engine": "Scanner", "result": "Detected" if malicious > 5 else "Clean", "category": "malicious" if malicious > 5 else "harmless"},
-            {"source": "HybridAnalysis", "engine": "Sandbox", "result": f"Score {risk_score}", "category": "malicious" if risk_score > 70 else "harmless"},
-            {"source": "MalwareBazaar", "engine": "DB", "result": "Found" if malicious > 3 else "Not Found", "category": "malicious" if malicious > 3 else "harmless"},
-            {"source": "MalShare", "engine": "DB", "result": "Found" if malicious > 2 else "Not Found", "category": "malicious" if malicious > 2 else "harmless"}
+            {"source": "VirusTotal", "engine": "Scanner", "result": "Unknown (API key required for real analysis)", "category": "info"},
+            {"source": "HybridAnalysis", "engine": "Sandbox", "result": "Not available", "category": "info"},
+            {"source": "MalwareBazaar", "engine": "Database", "result": "Not available", "category": "info"},
+            {"source": "MalShare", "engine": "Database", "result": "Not available", "category": "info"}
         ]
-        
         return {
-            "summary": {"malicious": malicious, "suspicious": 0, "harmless": 20, "undetected": 0},
+            "summary": {"malicious": 0, "suspicious": 0, "harmless": 0, "undetected": 4},
             "scans": scans,
             "mode": "demo",
             "target": target,
