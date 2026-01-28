@@ -43,20 +43,25 @@ def create_ransomware(
 ):
     """Create a new ransomware entry (Admin only)"""
     try:
+        # Normalize data
+        hashes = ransom_in.hashes or {}
+        ips = ransom_in.ips or []
+        domains = ransom_in.domains or []
+        
         # Validate that at least hashes or domains are present
-        if not (ransom_in.hashes or ransom_in.ips or ransom_in.domains):
+        if not (hashes or ips or domains):
             raise MalcomException(
                 "At least one hash, IP, or domain must be provided",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
         
         new_ransom = Ransomware(
-            name=ransom_in.name,
-            description=ransom_in.description,
-            hashes=ransom_in.hashes,
-            ips=ransom_in.ips,
-            domains=ransom_in.domains,
-            severity=ransom_in.severity
+            name=ransom_in.name.strip(),
+            description=ransom_in.description.strip() if ransom_in.description else None,
+            hashes=hashes,
+            ips=ips,
+            domains=domains,
+            severity=ransom_in.severity or "High"
         )
         db.add(new_ransom)
         db.commit()

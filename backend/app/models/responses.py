@@ -64,10 +64,13 @@ class RansomwareResponse(BaseModel):
 class RansomwareCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    hashes: dict = {}
-    ips: List[str] = []
-    domains: List[str] = []
-    severity: str = "High"
+    hashes: Optional[dict] = None
+    ips: Optional[List[str]] = None
+    domains: Optional[List[str]] = None
+    severity: Optional[str] = "High"
+    
+    class Config:
+        from_attributes = True
 
 class RansomwareUpdate(BaseModel):
     description: Optional[str] = None

@@ -108,22 +108,26 @@ export const RansomwareManager: React.FC = () => {
 
             if (isEditing && editingId) {
                 // Update existing
-                await updateRansomware(editingId, {
-                    description: newDescription,
-                    hashes: hashesObj,
-                    ips: ips,
-                    domains: domains
-                });
+                const updateData: any = {};
+                if (newDescription) updateData.description = newDescription;
+                if (Object.keys(hashesObj).length > 0) updateData.hashes = hashesObj;
+                if (ips.length > 0) updateData.ips = ips;
+                if (domains.length > 0) updateData.domains = domains;
+                
+                await updateRansomware(editingId, updateData);
                 setFormSuccess('Registro actualizado correctamente');
             } else {
                 // Create new
-                await addRansomware({
-                    name: newName,
-                    description: newDescription,
-                    hashes: hashesObj,
-                    ips: ips,
-                    domains: domains
-                });
+                const createData: any = {
+                    name: newName
+                };
+                if (newDescription) createData.description = newDescription;
+                if (Object.keys(hashesObj).length > 0) createData.hashes = hashesObj;
+                if (ips.length > 0) createData.ips = ips;
+                if (domains.length > 0) createData.domains = domains;
+                createData.severity = "High";
+                
+                await addRansomware(createData);
                 setFormSuccess('Registro creado correctamente');
             }
             
