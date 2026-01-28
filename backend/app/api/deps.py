@@ -37,4 +37,13 @@ def get_current_active_admin(
 ) -> User:
     if not current_user.is_admin:
         raise ForbiddenException("The user doesn't have enough privileges")
+    if not current_user.is_active:
+        raise ForbiddenException("The user is inactive")
+    return current_user
+
+def get_current_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if not current_user.is_active:
+        raise ForbiddenException("The user is inactive")
     return current_user
