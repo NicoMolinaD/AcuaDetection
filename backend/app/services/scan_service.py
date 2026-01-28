@@ -201,10 +201,11 @@ class ScanService:
         if target_type not in ["MD5", "SHA1", "SHA256"]: return []
         
         url = "https://mb-api.abuse.ch/api/v1/"
-        data = {'query': 'get_info', 'hash': target, 'api_token': settings.MALWAREBAZAAR_API_KEY}
+        headers = {**self.headers, 'Auth-Key': settings.MALWAREBAZAAR_API_KEY}
+        data = {'query': 'get_info', 'hash': target}
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.post(url, data=data, timeout=30)
+                response = await client.post(url, data=data, headers=headers, timeout=30)
                 if response.status_code == 200:
                     res = response.json()
                     if res.get('query_status') == 'ok':
