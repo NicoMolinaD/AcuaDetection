@@ -42,6 +42,34 @@ def create_tables():
         print(f"✗ Error creating tables: {e}")
         return False
 
+def migrate_add_last_login():
+    """Add last_login column to users table if it doesn't exist"""
+    try:
+        print("\n🔄 Checking for schema migrations...")
+        with engine.connect() as conn:
+            # Check if last_login column exists
+            result = conn.execute(text("""
+                SELECT EXISTS(
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'last_login'
+                )
+            """))
+            column_exists = result.scalar()
+            
+            if not column_exists:
+                print("  Adding last_login column to users table...")
+                conn.execute(text("""
+                    ALTER TABLE users ADD COLUMN last_login TIMESTAMP NULL
+                """))
+                conn.commit()
+                print("✓ Migration completed: last_login column added")
+            else:
+                print("✓ Schema is up to date")
+        return True
+    except Exception as e:
+        print(f"✗ Error during migration: {e}")
+        return False
+
 def create_default_users():
     """Create default admin and regular users"""
     db = SessionLocal()
@@ -100,6 +128,10 @@ def main():
     
     # Create tables
     if not create_tables():
+        sys.exit(1)
+    
+    # Run migrations
+    if not migrate_add_last_login():
         sys.exit(1)
     
     # Create default users

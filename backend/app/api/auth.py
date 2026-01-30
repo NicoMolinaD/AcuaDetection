@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Any
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -28,6 +28,10 @@ def login_access_token(
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not security.verify_password(form_data.password, user.hashed_password):
         raise UnauthorizedException("Credenciales incorrectas")
+    
+    user.last_login = datetime.utcnow()
+    db.add(user)
+    db.commit()
     
     log_action(db, user.id, "LOGIN_SUCCESS", process_name="AUTH", details="User logged in")
 

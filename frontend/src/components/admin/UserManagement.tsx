@@ -7,6 +7,7 @@ interface User {
     username: string;
     is_active: boolean;
     is_admin: boolean;
+    last_login: string | null;
 }
 
 export const UserManagement: React.FC = () => {
@@ -18,6 +19,29 @@ export const UserManagement: React.FC = () => {
     const [newUsername, setNewUsername] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [newIsAdmin, setNewIsAdmin] = useState(false);
+
+    const calculateTimeAgo = (lastLogin: string | null): string => {
+        if (!lastLogin) {
+            return 'Nunca se ha conectado';
+        }
+
+        const lastLoginDate = new Date(lastLogin);
+        const now = new Date();
+        const diffMs = now.getTime() - lastLoginDate.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) {
+            return 'Conectado';
+        } else if (diffMins < 60) {
+            return `Último ingreso hace ${diffMins} ${diffMins === 1 ? 'minuto' : 'minutos'}`;
+        } else if (diffHours < 24) {
+            return `Último ingreso hace ${diffHours} ${diffHours === 1 ? 'hora' : 'horas'}`;
+        } else {
+            return `Último ingreso hace ${diffDays} ${diffDays === 1 ? 'día' : 'días'}`;
+        }
+    };
 
     const loadUsers = async () => {
         setLoading(true);
@@ -139,9 +163,9 @@ export const UserManagement: React.FC = () => {
                                         </button>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`flex items-center gap-1.5 text-xs ${user.is_active ? 'text-emerald-400' : 'text-gray-500'}`}>
-                                            <div className={`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-emerald-400' : 'bg-gray-500'}`} />
-                                            {user.is_active ? 'Activo' : 'Inactivo'}
+                                        <span className={`flex items-center gap-1.5 text-xs ${!user.last_login || (new Date().getTime() - new Date(user.last_login).getTime()) > 60000 ? 'text-gray-500' : 'text-emerald-400'}`}>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${!user.last_login || (new Date().getTime() - new Date(user.last_login).getTime()) > 60000 ? 'bg-gray-500' : 'bg-emerald-400'}`} />
+                                            {calculateTimeAgo(user.last_login)}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
@@ -177,9 +201,9 @@ export const UserManagement: React.FC = () => {
                                     </div>
                                     <div>
                                         <h4 className="text-gray-200 font-bold">{user.username}</h4>
-                                        <span className={`flex items-center gap-1.5 text-[10px] mt-0.5 ${user.is_active ? 'text-emerald-400' : 'text-gray-500'}`}>
-                                            <div className={`w-1 h-1 rounded-full ${user.is_active ? 'bg-emerald-400' : 'bg-gray-500'}`} />
-                                            {user.is_active ? 'ACTIVO' : 'INACTIVO'}
+                                        <span className={`flex items-center gap-1.5 text-[10px] mt-0.5 ${!user.last_login || (new Date().getTime() - new Date(user.last_login).getTime()) > 60000 ? 'text-gray-500' : 'text-emerald-400'}`}>
+                                            <div className={`w-1 h-1 rounded-full ${!user.last_login || (new Date().getTime() - new Date(user.last_login).getTime()) > 60000 ? 'bg-gray-500' : 'bg-emerald-400'}`} />
+                                            {calculateTimeAgo(user.last_login).toUpperCase()}
                                         </span>
                                     </div>
                                 </div>

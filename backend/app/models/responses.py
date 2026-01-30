@@ -23,6 +23,7 @@ class UserResponse(BaseModel):
     username: str
     is_active: bool
     is_admin: bool
+    last_login: Optional[datetime] = None
 
     class Config:
         from_attributes = True
