@@ -199,9 +199,9 @@ export const SystemLogs: React.FC<SystemLogsProps> = ({ personal = false }) => {
             </div>
             <div className="w-full">
                 {/* Desktop View */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto max-h-96 overflow-y-auto">
                     <table className="w-full text-left border-collapse">
-                        <thead>
+                        <thead className="sticky top-0 bg-gray-800/50 z-10">
                             <tr className="bg-gray-800/50 text-gray-400 text-xs uppercase tracking-wider">
                                 <th className="p-4 font-medium">ID</th>
                                 <th className="p-4 font-medium">Timestamp</th>
@@ -254,7 +254,7 @@ export const SystemLogs: React.FC<SystemLogsProps> = ({ personal = false }) => {
                 </div>
 
                 {/* Mobile View */}
-                <div className="md:hidden divide-y divide-gray-800">
+                <div className="md:hidden divide-y divide-gray-800 max-h-96 overflow-y-auto">
                     {logs.map((log) => (
                         <div key={log.id} className="p-4 space-y-3">
                             <div className="flex justify-between items-center">
