@@ -19,7 +19,7 @@ export const SecurityEngineTable: React.FC<Props> = ({ scans }) => {
     return (
         <div className="w-full">
             {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto max-h-96 overflow-y-auto">
                 <table className="min-w-full divide-y divide-gray-700">
                     <thead className="sticky top-0 bg-gray-800/80 z-10">
                         <tr>
