@@ -8,6 +8,7 @@ interface User {
     is_active: boolean;
     is_admin: boolean;
     last_login: string | null;
+    is_online?: boolean;
 }
 
 export const UserManagement: React.FC = () => {
@@ -163,9 +164,9 @@ export const UserManagement: React.FC = () => {
                                         </button>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`flex items-center gap-1.5 text-xs ${!user.last_login || (new Date().getTime() - new Date(user.last_login).getTime()) > 60000 ? 'text-gray-500' : 'text-emerald-400'}`}>
-                                            <div className={`w-1.5 h-1.5 rounded-full ${!user.last_login || (new Date().getTime() - new Date(user.last_login).getTime()) > 60000 ? 'bg-gray-500' : 'bg-emerald-400'}`} />
-                                            {calculateTimeAgo(user.last_login)}
+                                        <span className={`flex items-center gap-1.5 text-xs ${user.is_online ? 'text-emerald-400' : 'text-gray-500'}`}>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${user.is_online ? 'bg-emerald-400' : 'bg-gray-500'}`} />
+                                            {user.is_online ? 'Conectado' : calculateTimeAgo(user.last_login)}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
@@ -201,9 +202,9 @@ export const UserManagement: React.FC = () => {
                                     </div>
                                     <div>
                                         <h4 className="text-gray-200 font-bold">{user.username}</h4>
-                                        <span className={`flex items-center gap-1.5 text-[10px] mt-0.5 ${!user.last_login || (new Date().getTime() - new Date(user.last_login).getTime()) > 60000 ? 'text-gray-500' : 'text-emerald-400'}`}>
-                                            <div className={`w-1 h-1 rounded-full ${!user.last_login || (new Date().getTime() - new Date(user.last_login).getTime()) > 60000 ? 'bg-gray-500' : 'bg-emerald-400'}`} />
-                                            {calculateTimeAgo(user.last_login).toUpperCase()}
+                                        <span className={`flex items-center gap-1.5 text-[10px] mt-0.5 ${user.is_online ? 'text-emerald-400' : 'text-gray-500'}`}>
+                                            <div className={`w-1 h-1 rounded-full ${user.is_online ? 'bg-emerald-400' : 'bg-gray-500'}`} />
+                                            {(user.is_online ? 'Conectado' : calculateTimeAgo(user.last_login)).toUpperCase()}
                                         </span>
                                     </div>
                                 </div>

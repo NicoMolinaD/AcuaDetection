@@ -49,14 +49,12 @@ def migrate_add_last_login():
         with engine.connect() as conn:
             # Check if last_login column exists
             result = conn.execute(text("""
-                SELECT EXISTS(
-                    SELECT 1 FROM information_schema.columns 
-                    WHERE table_name = 'users' AND column_name = 'last_login'
-                )
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name IN ('last_login','is_online')
             """))
-            column_exists = result.scalar()
-            
-            if not column_exists:
+            existing = {row[0] for row in result.fetchall()}
+
+            if 'last_login' not in existing:
                 print("  Adding last_login column to users table...")
                 conn.execute(text("""
                     ALTER TABLE users ADD COLUMN last_login TIMESTAMP NULL
@@ -64,7 +62,17 @@ def migrate_add_last_login():
                 conn.commit()
                 print("✓ Migration completed: last_login column added")
             else:
-                print("✓ Schema is up to date")
+                print("✓ last_login column exists")
+
+            if 'is_online' not in existing:
+                print("  Adding is_online column to users table...")
+                conn.execute(text("""
+                    ALTER TABLE users ADD COLUMN is_online BOOLEAN DEFAULT FALSE
+                """))
+                conn.commit()
+                print("✓ Migration completed: is_online column added")
+            else:
+                print("✓ is_online column exists")
         return True
     except Exception as e:
         print(f"✗ Error during migration: {e}")

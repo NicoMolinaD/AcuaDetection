@@ -24,6 +24,7 @@ class UserResponse(BaseModel):
     is_active: bool
     is_admin: bool
     last_login: Optional[datetime] = None
+    is_online: bool = False
 
     class Config:
         from_attributes = True

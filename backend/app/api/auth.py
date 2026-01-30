@@ -57,9 +57,10 @@ def login_access_token(
     
     # Clear failed attempts on successful login
     RateLimiter.clear_failed_attempts(form_data.username)
-    
-    # Update last login timestamp
+
+    # Update last login timestamp and mark as online
     user.last_login = datetime.utcnow()
+    user.is_online = True
     db.add(user)
     db.commit()
     
@@ -74,3 +75,16 @@ def login_access_token(
         "is_admin": user.is_admin,
         "username": user.username
     }
+
+
+@router.post("/logout")
+def logout_user(
+    current_user: User = Depends(deps.get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Logout current user and mark as offline"""
+    current_user.is_online = False
+    db.add(current_user)
+    db.commit()
+    log_action(db, current_user.id, "LOGOUT", process_name="AUTH", details="User logged out")
+    return {"detail": "Logged out"}

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { setAuthToken } from '../services/api';
+import { setAuthToken, logoutUser } from '../services/api';
 
 interface User {
     username: string;
@@ -49,7 +49,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('user', JSON.stringify(userData));
     };
 
-    const logout = () => {
+    const logout = async () => {
+        try {
+            // notify backend (best-effort)
+            await logoutUser();
+        } catch (e) {
+            // ignore errors during logout
+            console.warn('Logout API failed', e);
+        }
+
         setToken(null);
         setUser(null);
         setAuthToken(null);

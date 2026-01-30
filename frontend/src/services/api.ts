@@ -20,6 +20,11 @@ export const loginUser = async (username: string, password: string) => {
     return response.data;
 };
 
+export const logoutUser = async () => {
+    const response = await api.post('/auth/logout');
+    return response.data;
+};
+
 export const scanTarget = async (target: string, filename?: string) => {
     try {
         const response = await api.get('/scan/', { params: { target, filename } });
