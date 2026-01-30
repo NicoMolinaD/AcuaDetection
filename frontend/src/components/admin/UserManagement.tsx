@@ -33,7 +33,8 @@ export const UserManagement: React.FC = () => {
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
 
-        if (diffMins < 1) {
+        // Consider user "connected" if last activity within 5 minutes
+        if (diffMins < 5) {
             return 'Conectado';
         } else if (diffMins < 60) {
             return `Último ingreso hace ${diffMins} ${diffMins === 1 ? 'minuto' : 'minutos'}`;
