@@ -159,13 +159,31 @@ export const UserManagement: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <button
-                                            onClick={() => toggleAdmin(user)}
-                                            className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${user.is_admin ? 'bg-purple-900/30 text-purple-400 border border-purple-900/50' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}
-                                        >
-                                            <Shield size={12} />
-                                            {user.is_admin ? 'Administrador' : 'Analista'}
-                                        </button>
+                                        {user.username === 'admin' ? (
+                                            /* Admin root user - blue badge, not clickable */
+                                            <span className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-900/30 text-blue-400 border border-blue-900/50">
+                                                <Shield size={12} />
+                                                Administrador
+                                            </span>
+                                        ) : user.is_admin ? (
+                                            /* Elevated user - green badge, clickable */
+                                            <button
+                                                onClick={() => toggleAdmin(user)}
+                                                className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-900/30 text-emerald-400 border border-emerald-900/50 hover:bg-emerald-900/50 transition-colors"
+                                            >
+                                                <Shield size={12} />
+                                                Privilegiado
+                                            </button>
+                                        ) : (
+                                            /* Regular user - gray badge, clickable */
+                                            <button
+                                                onClick={() => toggleAdmin(user)}
+                                                className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 transition-colors"
+                                            >
+                                                <Shield size={12} />
+                                                Analista
+                                            </button>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`flex items-center gap-1.5 text-xs ${user.is_online ? 'text-emerald-400' : 'text-gray-500'}`}>
@@ -174,13 +192,15 @@ export const UserManagement: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => handleDeleteUser(user.id)}
-                                            className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                                            title="Eliminar Usuario"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                        {user.username !== 'admin' && (
+                                            <button
+                                                onClick={() => handleDeleteUser(user.id)}
+                                                className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                                                title="Eliminar Usuario"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -212,21 +232,41 @@ export const UserManagement: React.FC = () => {
                                         </span>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => handleDeleteUser(user.id)}
-                                    className="p-2 text-gray-500 hover:text-red-400"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
+                                {user.username !== 'admin' && (
+                                    <button
+                                        onClick={() => handleDeleteUser(user.id)}
+                                        className="p-2 text-gray-500 hover:text-red-400"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                )}
                             </div>
                             <div className="flex items-center justify-between">
-                                <button
-                                    onClick={() => toggleAdmin(user)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold ${user.is_admin ? 'bg-purple-900/30 text-purple-400 border border-purple-900/50' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}
-                                >
-                                    <Shield size={14} />
-                                    {user.is_admin ? 'Administrador' : 'Analista'}
-                                </button>
+                                {user.username === 'admin' ? (
+                                    /* Admin root user - blue badge, not clickable */
+                                    <span className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-900/30 text-blue-400 border border-blue-900/50">
+                                        <Shield size={14} />
+                                        Administrador
+                                    </span>
+                                ) : user.is_admin ? (
+                                    /* Elevated user - green badge, clickable */
+                                    <button
+                                        onClick={() => toggleAdmin(user)}
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-900/30 text-emerald-400 border border-emerald-900/50 hover:bg-emerald-900/50 transition-colors"
+                                    >
+                                        <Shield size={14} />
+                                        Privilegiado
+                                    </button>
+                                ) : (
+                                    /* Regular user - gray badge, clickable */
+                                    <button
+                                        onClick={() => toggleAdmin(user)}
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 transition-colors"
+                                    >
+                                        <Shield size={14} />
+                                        Analista
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -274,12 +314,12 @@ export const UserManagement: React.FC = () => {
                                     id="isAdmin"
                                     checked={newIsAdmin}
                                     onChange={(e) => setNewIsAdmin(e.target.checked)}
-                                    className="w-4 h-4 rounded border-gray-700 bg-gray-800 text-blue-600 focus:ring-blue-500"
+                                    className="w-4 h-4 rounded border-gray-700 bg-gray-800 text-emerald-600 focus:ring-emerald-500"
                                 />
                                 <label htmlFor="isAdmin" className="text-sm text-gray-300 font-medium cursor-pointer flex-1">
-                                    ¿Asignar permisos de Administrador?
+                                    ¿Asignar permisos privilegiados?
                                 </label>
-                                <Shield className={newIsAdmin ? 'text-purple-400' : 'text-gray-600'} size={18} />
+                                <Shield className={newIsAdmin ? 'text-emerald-400' : 'text-gray-600'} size={18} />
                             </div>
                             <div className="pt-4 flex gap-3">
                                 <button

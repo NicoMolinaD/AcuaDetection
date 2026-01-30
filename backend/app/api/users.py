@@ -36,9 +36,9 @@ def create_user(
     *,
     db: Session = Depends(get_db),
     user_in: UserCreate,
-    current_user: User = Depends(deps.get_current_active_admin),
+    current_user: User = Depends(deps.get_root_admin),
 ):
-    """Create a new user (Admin only)"""
+    """Create a new user (Root Admin only)"""
     user = db.query(User).filter(User.username == user_in.username).first()
     if user:
         raise BadRequestException("El usuario ya existe")
@@ -63,9 +63,9 @@ def delete_user(
     *,
     db: Session = Depends(get_db),
     user_id: int,
-    current_user: User = Depends(deps.get_current_active_admin),
+    current_user: User = Depends(deps.get_root_admin),
 ):
-    """Delete a user (Admin only)"""
+    """Delete a user (Root Admin only)"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise NotFoundException("Usuario no encontrado")
@@ -91,9 +91,9 @@ def update_user(
     db: Session = Depends(get_db),
     user_id: int,
     user_in: UserUpdate,
-    current_user: User = Depends(deps.get_current_active_admin),
+    current_user: User = Depends(deps.get_root_admin),
 ):
-    """Update a user (Admin only)"""
+    """Update a user (Root Admin only)"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise NotFoundException("Usuario no encontrado")

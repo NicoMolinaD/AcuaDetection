@@ -41,9 +41,23 @@ def get_current_active_admin(
         raise ForbiddenException("The user is inactive")
     return current_user
 
+def get_root_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """
+    Only allows the 'admin' user (root administrator).
+    Used for user management operations that only the root admin can perform.
+    """
+    if current_user.username != "admin":
+        raise ForbiddenException("Solo el administrador principal puede realizar esta acción")
+    if not current_user.is_active:
+        raise ForbiddenException("El usuario está inactivo")
+    return current_user
+
 def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
     if not current_user.is_active:
         raise ForbiddenException("The user is inactive")
     return current_user
+
