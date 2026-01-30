@@ -11,6 +11,7 @@ import { HistoryDrawer } from './components/common/HistoryDrawer';
 import { ScanResults } from './components/dashboard/ScanResults';
 import { BatchResults } from './components/dashboard/BatchResults';
 import { useAuth } from './context/AuthContext';
+import { useSessionTimeout } from './hooks/useSessionTimeout';
 import { Upload, AlertTriangle, Activity, Database, Terminal, Users, Clock, Search as SearchIcon, Activity as Pulse } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -44,6 +45,7 @@ interface HistoryItem {
 
 const App: React.FC = () => {
     const { user, logout, isLoading } = useAuth();
+    useSessionTimeout(); // Set up session timeout and heartbeat
     const [target, setTarget] = useState('');
     const [scanning, setScanning] = useState(false);
     const [data, setData] = useState<ScanData | null>(null);

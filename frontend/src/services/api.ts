@@ -25,6 +25,11 @@ export const logoutUser = async () => {
     return response.data;
 };
 
+export const sendHeartbeat = async () => {
+    const response = await api.post('/session/heartbeat');
+    return response.data;
+};
+
 export const scanTarget = async (target: string, filename?: string) => {
     try {
         const response = await api.get('/scan/', { params: { target, filename } });

@@ -60,6 +60,9 @@ export const UserManagement: React.FC = () => {
 
     useEffect(() => {
         loadUsers();
+        // Refresh user list every 5 seconds to show real-time status changes
+        const interval = setInterval(loadUsers, 5000);
+        return () => clearInterval(interval);
     }, []);
 
     const handleCreateUser = async (e: React.FormEvent) => {
