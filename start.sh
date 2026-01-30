@@ -141,9 +141,6 @@ echo -e "  HTTP (8080):  0.0.0.0:8080"
 echo -e "  HTTPS (8443): 0.0.0.0:8443"
 echo ""
 
-echo -e "${BLUE}Credenciales Predeterminadas:${NC}"
-echo -e "  Admin: ${GREEN}admin${NC} / ${GREEN}Ad.m¡n1sTer.#2026!${NC}"
-echo -e "  Usuario:  ${GREEN}user${NC} / ${GREEN}user123${NC}"
 echo ""
 
 echo -e "${BLUE}Comandos Útiles:${NC}"
