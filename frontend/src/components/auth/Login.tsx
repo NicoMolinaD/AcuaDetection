@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { loginUser } from '../../services/api';
-import { Lock, User } from 'lucide-react';
+import { Lock, User, AlertCircle } from 'lucide-react';
+
+// Validation patterns matching backend
+const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,50}$/;
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 128;
+
+interface ValidationError {
+    username?: string;
+    password?: string;
+}
 
 export const Login: React.FC = () => {
     const { login } = useAuth();
@@ -9,17 +19,47 @@ export const Login: React.FC = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<ValidationError>({});
+
+    const validateInputs = (): boolean => {
+        const errors: ValidationError = {};
+
+        // Validate username
+        if (!username.trim()) {
+            errors.username = 'El usuario es requerido';
+        } else if (!USERNAME_PATTERN.test(username)) {
+            errors.username = 'El usuario debe contener solo letras, números, guiones y guiones bajos (3-50 caracteres)';
+        }
+
+        // Validate password
+        if (!password) {
+            errors.password = 'La contraseña es requerida';
+        } else if (password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH) {
+            errors.password = `La contraseña debe tener entre ${PASSWORD_MIN_LENGTH} y ${PASSWORD_MAX_LENGTH} caracteres`;
+        }
+
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setValidationErrors({});
+
+        // Validate inputs before sending
+        if (!validateInputs()) {
+            setLoading(false);
+            return;
+        }
+
         try {
             const data = await loginUser(username, password);
             login(data.access_token, data.username, data.is_admin);
 
         } catch (err) {
-            setError('Credenciales inválidas o error de conexión');
+            setError('Usuario o contraseña incorrectos');
         } finally {
             setLoading(false);
         }
@@ -35,7 +75,8 @@ export const Login: React.FC = () => {
                 </div>
 
                 {error && (
-                    <div className="bg-red-900/30 border border-red-900/50 text-red-200 p-3 rounded-lg mb-6 text-sm text-center">
+                    <div className="bg-red-900/30 border border-red-900/50 text-red-200 p-3 rounded-lg mb-6 text-sm text-center flex items-center gap-2 justify-center">
+                        <AlertCircle size={16} />
                         {error}
                     </div>
                 )}
@@ -48,12 +89,24 @@ export const Login: React.FC = () => {
                             <input
                                 type="text"
                                 value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="w-full bg-gray-950 border border-gray-700 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                                onChange={(e) => {
+                                    setUsername(e.target.value);
+                                    if (validationErrors.username) {
+                                        setValidationErrors({ ...validationErrors, username: undefined });
+                                    }
+                                }}
+                                className={`w-full bg-gray-950 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
+                                    validationErrors.username 
+                                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                                        : 'border-gray-700 focus:ring-emerald-500/50 focus:border-emerald-500'
+                                }`}
                                 placeholder="Ingresa tu usuario"
                                 required
                             />
                         </div>
+                        {validationErrors.username && (
+                            <p className="text-xs text-red-400 mt-1">{validationErrors.username}</p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
@@ -63,12 +116,24 @@ export const Login: React.FC = () => {
                             <input
                                 type="password"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-gray-950 border border-gray-700 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    if (validationErrors.password) {
+                                        setValidationErrors({ ...validationErrors, password: undefined });
+                                    }
+                                }}
+                                className={`w-full bg-gray-950 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
+                                    validationErrors.password 
+                                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                                        : 'border-gray-700 focus:ring-emerald-500/50 focus:border-emerald-500'
+                                }`}
                                 placeholder="••••••••"
                                 required
                             />
                         </div>
+                        {validationErrors.password && (
+                            <p className="text-xs text-red-400 mt-1">{validationErrors.password}</p>
+                        )}
                     </div>
 
                     <button

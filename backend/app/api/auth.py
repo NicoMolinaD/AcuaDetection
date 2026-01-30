@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from app.api import deps
 from app.core import security
 from app.core.config import settings
+from app.core.validators import SecurityValidator
+from app.core.rate_limiter import RateLimiter
 from app.models.user import User
 from app.core.database import get_db
 from app.models.responses import Token
@@ -25,10 +27,38 @@ def login_access_token(
     """
     OAuth2 compatible token login, get an access token for future requests
     """
-    user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
-        raise UnauthorizedException("Credenciales incorrectas")
+    # Check if account is locked due to too many failed attempts
+    if RateLimiter.is_account_locked(form_data.username):
+        log_action(db, None, "LOGIN_FAILED", process_name="AUTH", details=f"Account locked: {form_data.username}")
+        raise UnauthorizedException("Usuario o contraseña incorrectos")
     
+    # Validate input format to prevent injection attacks
+    is_valid, error_msg = SecurityValidator.validate_login_input(
+        form_data.username, 
+        form_data.password
+    )
+    
+    if not is_valid:
+        # Log suspicious activity
+        RateLimiter.record_failed_attempt(form_data.username)
+        log_action(db, None, "LOGIN_FAILED", process_name="AUTH", details=f"Invalid input format from user: {form_data.username}")
+        raise UnauthorizedException("Usuario o contraseña incorrectos")
+    
+    # Query user with parameterized query (SQLAlchemy handles this)
+    user = db.query(User).filter(User.username == form_data.username).first()
+    
+    # Use generic error message to prevent username enumeration
+    if not user or not security.verify_password(form_data.password, user.hashed_password):
+        # Record failed attempt
+        RateLimiter.record_failed_attempt(form_data.username)
+        # Log failed login attempt
+        log_action(db, None, "LOGIN_FAILED", process_name="AUTH", details=f"Invalid credentials")
+        raise UnauthorizedException("Usuario o contraseña incorrectos")
+    
+    # Clear failed attempts on successful login
+    RateLimiter.clear_failed_attempts(form_data.username)
+    
+    # Update last login timestamp
     user.last_login = datetime.utcnow()
     db.add(user)
     db.commit()
