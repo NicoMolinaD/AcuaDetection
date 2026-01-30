@@ -26,7 +26,7 @@ def update_admin_password():
             return False
         
         # Strong admin password
-        new_password = "Ad.m¡n1sTer.#2O26!"
+        new_password = "Ad.m¡n1sTer.#2026!"
         
         print("Updating admin password...")
         admin.hashed_password = security.get_password_hash(new_password)

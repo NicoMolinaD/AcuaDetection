@@ -89,15 +89,15 @@ def create_default_users():
         else:
             admin_user = user.User(
                 username="admin",
-                hashed_password=security.get_password_hash("Ad.m¡n1sTer.#2O26!"),
+                hashed_password=security.get_password_hash("Ad.m¡n1sTer.#2026!"),
                 is_admin=True,
                 is_active=True
             )
             db.add(admin_user)
             db.commit()
-            print("[OK] Admin user created")
+            print("Admin user created/reset with password: Ad.m¡n1sTer.#2026!")
             print("  Username: admin")
-            print("  Password: Ad.m¡n1sTer.#2O26!")
+            print("  Password: Ad.m¡n1sTer.#2026!")
             print("  [WARNING] IMPORTANT: Change this password after first login!")
         
         # Create a regular user for testing
