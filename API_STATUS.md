@@ -1,16 +1,16 @@
 # Estado de las APIs de Detección de Amenazas
 
-## ✅ APIs Operacionales
+## APIs Operacionales
 
 ### 1. **AquaDetection** - Base de Datos Local de Ransomware
-- **Estado**: ✅ OPERACIONAL
+- **Estado**: [OK] OPERACIONAL
 - **Función**: Verifica hashes, IPs y dominios contra la BD local
 - **Respuesta**: Muestra "Malware encontrado en base de datos: [nombre]"
 - **Categoría**: `malicious`
 - **Uso**: Almacenar y verificar IOCs conocidos
 
 ### 2. **VirusTotal**
-- **Estado**: ✅ OPERACIONAL
+- **Estado**: [OK] OPERACIONAL
 - **API Key**: `9cd240ab152139935d9939cda3227012904d247a5c426dc172930afc16500b36`
 - **Motores**: 78+ antivirus engines
 - **Tipos de búsqueda**: Hashes (MD5, SHA1, SHA256), URLs, Dominios, IPs
@@ -18,8 +18,8 @@
 - **Categorías**: `malicious`, `suspicious`, `harmless`, `undetected`
 
 ### 3. **MalwareBazaar**
-- **Estado**: ✅ OPERACIONAL
-- **API Key**: `500429f6dc4dc035ff82953cfce889793e563fbc89a94729` ✓ Validada
+- **Estado**: [OK] OPERACIONAL
+- **API Key**: `500429f6dc4dc035ff82953cfce889793e563fbc89a94729` [OK] Validada
 - **Verificación**: Ejecutar `python3 backend/verify_malwarebazaar_key.py <API_KEY>`
 - **Tipos de búsqueda**: Hashes (MD5, SHA1, SHA256)
 - **Respuesta**: 
@@ -28,7 +28,7 @@
 - **Autenticación**: Header `Auth-Key: <API_KEY>`
 
 ### 4. **MalShare**
-- **Estado**: ✅ OPERACIONAL
+- **Estado**: [OK] OPERACIONAL
 - **API Key**: `11ccbe8e526aab052d6327b0b17ae44865a39323bbdabdcc61e4b9bf56616611`
 - **Tipos de búsqueda**: Hashes (MD5, SHA1, SHA256)
 - **Respuesta**: 
@@ -36,13 +36,13 @@
   - No encontrado → "Limpio / No encontrado" (harmless)
 
 ### 5. **AbuseIPDB**
-- **Estado**: ✅ OPERACIONAL
+- **Estado**: [OK] OPERACIONAL
 - **API Key**: `50cadad3d336deb9816697d07bbfc371f531830e326b7d08d1a5b68388e717f15cdeb37cd865507c`
 - **Tipos de búsqueda**: Solo IPs
 - **Respuesta**: Confidence score (%)
 - **Categorías**: `malicious` (si score > 20%), `harmless`
 
-## ❌ APIs Eliminadas
+## APIs Eliminadas
 
 ### HybridAnalysis
 - **Razón**: Error HTTP 410 Gone (servicio deprecado)
@@ -52,7 +52,7 @@
 - **Razón**: API inconsistente, poco confiable
 - **Uso original**: Verificar URLs sospechosas
 
-## 📊 Flujo de Escaneo
+## Flujo de Escaneo
 
 Cuando se escanea un objetivo (hash, IP, URL, dominio):
 
@@ -70,7 +70,7 @@ Cuando se escanea un objetivo (hash, IP, URL, dominio):
    - Detalles de cada fuente
    - Categoría agregada (malicioso, sospechoso, seguro)
 
-## 🔧 Configuración (.env)
+## Configuración (.env)
 
 ```env
 # VirusTotal
@@ -86,7 +86,7 @@ MALSHARE_API_KEY=11ccbe8e526aab052d6327b0b17ae44865a39323bbdabdcc61e4b9bf5661661
 ABUSEIPDB_API_KEY=50cadad3d336deb9816697d07bbfc371f531830e326b7d08d1a5b68388e717f15cdeb37cd865507c
 ```
 
-## ✅ Validación de APIs
+## Validación de APIs
 
 ### Verificar MalwareBazaar
 ```bash
@@ -95,11 +95,11 @@ python3 backend/verify_malwarebazaar_key.py "500429f6dc4dc035ff82953cfce889793e5
 
 Resultado esperado:
 ```
-🔍 Verificando API key de MalwareBazaar...
-✓ API KEY VÁLIDA
+[INFO] Verificando API key de MalwareBazaar...
+[OK] API KEY VÁLIDA
 ```
 
-## 📈 Métricas de Detección
+## Métricas de Detección
 
 Para un hash malicioso típico:
 - **AquaDetection**: Detecta si está en BD local

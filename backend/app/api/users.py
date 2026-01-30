@@ -98,9 +98,12 @@ def update_user(
     if not user:
         raise NotFoundException("Usuario no encontrado")
     
-    # Protect the root admin user
+    # Protect the root admin user - cannot revoke admin rights or deactivate
     if user.username == "admin":
-        raise ForbiddenException("No puedes modificar al usuario administrador del sistema")
+        if user_in.is_admin is False:
+            raise ForbiddenException("No se puede revocar el rol de administrador al usuario admin")
+        if user_in.is_active is False:
+            raise ForbiddenException("No se puede desactivar al usuario admin")
     
     if user_in.password:
         user.hashed_password = security.get_password_hash(user_in.password)

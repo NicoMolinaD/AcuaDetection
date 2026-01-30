@@ -84,8 +84,8 @@ pytest tests/ -v
 - **Consistencia**: Código más limpio y profesional
 
 Ejemplo:
-- ❌ Antes: `"✓ API KEY VÁLIDA"`
-- ✓ Después: `"[OK] API KEY VALID"`
+- Antes: `"✓ API KEY VÁLIDA"`
+- Después: `"[OK] API KEY VALID"`
 
 ---
 

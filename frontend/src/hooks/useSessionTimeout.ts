@@ -35,7 +35,7 @@ export const useSessionTimeout = () => {
         inactivityTimerRef.current = setTimeout(() => {
             console.warn('Session timeout: logging out due to 5 minutes of inactivity');
             // Show notification before logout
-            alert('Desconexion por inactividad');
+            alert('Desconexión por inactividad');
             logout();
         }, INACTIVITY_TIMEOUT);
     }, [logout]);

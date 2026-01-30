@@ -142,7 +142,7 @@ echo -e "  HTTPS (8443): 0.0.0.0:8443"
 echo ""
 
 echo -e "${BLUE}Credenciales Predeterminadas:${NC}"
-echo -e "  Admin: ${GREEN}admin${NC} / ${GREEN}admin123${NC}"
+echo -e "  Admin: ${GREEN}admin${NC} / ${GREEN}Ad.m¡n1sTer.#2O26!${NC}"
 echo -e "  Usuario:  ${GREEN}user${NC} / ${GREEN}user123${NC}"
 echo ""
 

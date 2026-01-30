@@ -16,5 +16,5 @@ fi
 
 echo -e "${GREEN}[OK] Base de datos inicializada${NC}"
 echo -e "Puedes iniciar sesión con:"
-echo -e "  Usuario Admin: ${GREEN}admin${NC} / Contraseña: ${GREEN}admin123${NC}"
+echo -e "  Usuario Admin: ${GREEN}admin${NC} / Contraseña: ${GREEN}Ad.m¡n1sTer.#2O26!${NC}"
 echo -e "  Usuario Regular: ${GREEN}user${NC} / Contraseña: ${GREEN}user123${NC}"
