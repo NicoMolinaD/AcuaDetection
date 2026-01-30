@@ -2,10 +2,15 @@
 """
 Script to update admin user password to a strong one.
 Run this script once to secure the admin account.
+
+Usage: docker compose exec backend python update_admin_password.py
 """
 
 import sys
-sys.path.insert(0, '/app')
+import os
+
+# Add parent directory to path when running as script
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.core.database import SessionLocal
 from app.core import security

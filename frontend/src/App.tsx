@@ -192,7 +192,8 @@ const App: React.FC = () => {
     if (isLoading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center text-white">Cargando...</div>;
     if (!user) return <Login />;
 
-    const TabButton: React.FC<{ id: typeof activeTab; label: string; icon: any; adminOnly?: boolean }> = ({ id, label, icon: Icon, adminOnly }) => {
+    const TabButton: React.FC<{ id: typeof activeTab; label: string; icon: any; adminOnly?: boolean; rootAdminOnly?: boolean }> = ({ id, label, icon: Icon, adminOnly, rootAdminOnly }) => {
+        if (rootAdminOnly && user.username !== 'admin') return null;
         if (adminOnly && !user.is_admin) return null;
         return (
             <button
@@ -224,7 +225,7 @@ const App: React.FC = () => {
                 setShowHistory={setShowHistory}
                 scanHistory={scanHistory}
                 loadFromHistory={loadFromHistory}
-                clearHistory={() => {}}
+                clearHistory={() => { }}
             />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -235,7 +236,7 @@ const App: React.FC = () => {
                         <TabButton id="file" label="Analizador de Archivos" icon={Upload} />
                         <TabButton id="malcom" label="Tráfico de Red" icon={Pulse} />
                         <TabButton id="ransomware" label="Inteligencia" icon={Database} adminOnly />
-                        <TabButton id="users" label="Usuarios" icon={Users} adminOnly />
+                        <TabButton id="users" label="Usuarios" icon={Users} rootAdminOnly />
                         <TabButton id="logs" label="Logs" icon={Terminal} adminOnly />
                         <TabButton id="history" label="Mi Actividad" icon={Clock} />
                     </nav>
