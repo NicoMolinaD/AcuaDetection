@@ -72,6 +72,10 @@ def delete_user(
     if user.id == current_user.id:
         raise BadRequestException("No puedes eliminarte a ti mismo")
     
+    # Protect the root admin user
+    if user.username == "admin":
+        raise ForbiddenException("No puedes eliminar al usuario administrador del sistema")
+    
     username = user.username
     db.delete(user)
     db.commit()
@@ -93,6 +97,10 @@ def update_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise NotFoundException("Usuario no encontrado")
+    
+    # Protect the root admin user
+    if user.username == "admin":
+        raise ForbiddenException("No puedes modificar al usuario administrador del sistema")
     
     if user_in.password:
         user.hashed_password = security.get_password_hash(user_in.password)
