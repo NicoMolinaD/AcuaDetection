@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api import deps
 from app.core import security
 from app.core.database import get_db
+from app.core.validators import SecurityValidator
 from app.core.exceptions import MalcomException, NotFoundException, ForbiddenException, BadRequestException
 from app.core.logging import get_logger
 from app.models.user import User
@@ -42,6 +43,11 @@ def create_user(
     user = db.query(User).filter(User.username == user_in.username).first()
     if user:
         raise BadRequestException("El usuario ya existe")
+    
+    # Validate password complexity
+    is_valid, error = SecurityValidator.validate_password(user_in.password)
+    if not is_valid:
+        raise BadRequestException(error)
     
     new_user = User(
         username=user_in.username,
@@ -106,6 +112,10 @@ def update_user(
             raise ForbiddenException("No se puede desactivar al usuario admin")
     
     if user_in.password:
+        # Validate password complexity if provided
+        is_valid, error = SecurityValidator.validate_password(user_in.password)
+        if not is_valid:
+            raise BadRequestException(error)
         user.hashed_password = security.get_password_hash(user_in.password)
     if user_in.is_admin is not None:
         user.is_admin = user_in.is_admin

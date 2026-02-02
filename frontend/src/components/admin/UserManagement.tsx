@@ -65,8 +65,25 @@ export const UserManagement: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
+    const validatePassword = (password: string): string | null => {
+        if (password.length < 8) return 'La contraseña debe tener al menos 8 caracteres';
+        if (password.length > 16) return 'La contraseña no puede tener más de 16 caracteres';
+        if (!/[A-Z]/.test(password)) return 'La contraseña debe tener al menos una mayúscula';
+        if (!/[a-z]/.test(password)) return 'La contraseña debe tener al menos una minúscula';
+        if (!/[0-9]/.test(password)) return 'La contraseña debe tener al menos un número';
+        if (!/[!@#$%^&*()_+=\[\]{};:\'",.<>?/\\|`~\-¡]/.test(password)) return 'La contraseña debe tener al menos un carácter especial';
+        return null;
+    };
+
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const passwordError = validatePassword(newPassword);
+        if (passwordError) {
+            alert(passwordError);
+            return;
+        }
+
         try {
             await createUser({ username: newUsername, password: newPassword, is_admin: newIsAdmin });
             setShowAddModal(false);
