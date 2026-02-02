@@ -324,6 +324,16 @@ export const UserManagement: React.FC = () => {
                                     placeholder="••••••••"
                                     required
                                 />
+                                <div className="text-xs text-gray-500 space-y-1 mt-2 ml-1">
+                                    <p className="font-medium text-gray-400">La contraseña debe tener:</p>
+                                    <ul className="list-disc list-inside space-y-0.5 pl-1">
+                                        <li>Al menos 1 carácter en mayúscula</li>
+                                        <li>Al menos 1 carácter en minúscula</li>
+                                        <li>8 caracteres como mínimo</li>
+                                        <li>1 símbolo especial</li>
+                                        <li>1 número</li>
+                                    </ul>
+                                </div>
                             </div>
                             <div className="flex items-center gap-3 p-3 bg-gray-850 rounded-xl border border-gray-800">
                                 <input

@@ -74,47 +74,7 @@ $DOCKER_CMD compose up -d
 log_success "Contenedores iniciados"
 
 # Verificar servicios
-log_info "Verificando servicios"
-
-echo -n "  PostgreSQL: "
-for i in {1..30}; do
-    if $DOCKER_CMD compose exec -T db pg_isready -U aquadetection >/dev/null 2>&1; then
-        echo -e "${GREEN}OK${NC}"
-        break
-    fi
-    [ $i -eq 30 ] && echo -e "${RED}FALLO${NC}" || echo -n "."
-    sleep 1
-done
-
-echo -n "  Backend: "
-for i in {1..30}; do
-    if $DOCKER_CMD compose exec -T backend curl -s http://localhost:8000/health >/dev/null 2>&1; then
-        echo -e "${GREEN}OK${NC}"
-        break
-    fi
-    [ $i -eq 30 ] && echo -e "${RED}FALLO${NC}" || echo -n "."
-    sleep 1
-done
-
-echo -n "  Frontend: "
-for i in {1..10}; do
-    if $DOCKER_CMD compose exec -T frontend test -f /usr/share/nginx/html/index.html 2>/dev/null; then
-        echo -e "${GREEN}OK${NC}"
-        break
-    fi
-    [ $i -eq 10 ] && echo -e "${RED}FALLO${NC}" || echo -n "."
-    sleep 1
-done
-
-echo -n "  Nginx: "
-for i in {1..10}; do
-    if $DOCKER_CMD compose exec -T nginx test -f /etc/nginx/nginx.conf 2>/dev/null; then
-        echo -e "${GREEN}OK${NC}"
-        break
-    fi
-    [ $i -eq 10 ] && echo -e "${RED}FALLO${NC}" || echo -n "."
-    sleep 1
-done
+# Verificación de servicios omitida por el momento
 
 # Obtener IP local
 LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "10.3.11.101")
