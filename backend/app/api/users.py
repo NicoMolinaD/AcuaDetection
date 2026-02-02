@@ -36,9 +36,9 @@ def create_user(
     *,
     db: Session = Depends(get_db),
     user_in: UserCreate,
-    current_user: User = Depends(deps.get_current_active_admin),
+    current_user: User = Depends(deps.get_root_admin),
 ):
-    """Create a new user (Admin only)"""
+    """Create a new user (Root Admin only)"""
     user = db.query(User).filter(User.username == user_in.username).first()
     if user:
         raise BadRequestException("El usuario ya existe")
@@ -63,14 +63,18 @@ def delete_user(
     *,
     db: Session = Depends(get_db),
     user_id: int,
-    current_user: User = Depends(deps.get_current_active_admin),
+    current_user: User = Depends(deps.get_root_admin),
 ):
-    """Delete a user (Admin only)"""
+    """Delete a user (Root Admin only)"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise NotFoundException("Usuario no encontrado")
     if user.id == current_user.id:
         raise BadRequestException("No puedes eliminarte a ti mismo")
+    
+    # Protect the root admin user
+    if user.username == "admin":
+        raise ForbiddenException("No puedes eliminar al usuario administrador del sistema")
     
     username = user.username
     db.delete(user)
@@ -87,12 +91,19 @@ def update_user(
     db: Session = Depends(get_db),
     user_id: int,
     user_in: UserUpdate,
-    current_user: User = Depends(deps.get_current_active_admin),
+    current_user: User = Depends(deps.get_root_admin),
 ):
-    """Update a user (Admin only)"""
+    """Update a user (Root Admin only)"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise NotFoundException("Usuario no encontrado")
+    
+    # Protect the root admin user - cannot revoke admin rights or deactivate
+    if user.username == "admin":
+        if user_in.is_admin is False:
+            raise ForbiddenException("No se puede revocar el rol de administrador al usuario admin")
+        if user_in.is_active is False:
+            raise ForbiddenException("No se puede desactivar al usuario admin")
     
     if user_in.password:
         user.hashed_password = security.get_password_hash(user_in.password)

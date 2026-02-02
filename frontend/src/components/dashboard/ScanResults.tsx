@@ -36,7 +36,7 @@ export const ScanResults: React.FC<ScanResultsProps> = ({ data, activeTab, batch
                             ? 'bg-amber-900/30 text-amber-300 border border-amber-700/50' 
                             : 'bg-emerald-900/30 text-emerald-300 border border-emerald-700/50'
                     }`}>
-                        {data.mode === 'demo' ? '⚠️ MODO DEMO' : '✓ ANÁLISIS EN VIVO'}
+                        {data.mode === 'demo' ? '[DEMO MODE]' : '[LIVE ANALYSIS]'}
                     </span>
                 </div>
                 <button
@@ -50,10 +50,10 @@ export const ScanResults: React.FC<ScanResultsProps> = ({ data, activeTab, batch
 
             {data.mode === 'demo' && (
                 <div className="bg-amber-900/20 border border-amber-700/50 rounded-lg p-4 flex items-start gap-3">
-                    <div className="text-2xl">⚠️</div>
+                    <div className="text-2xl font-bold">[!]</div>
                     <div>
-                        <p className="text-amber-200 font-semibold mb-1">Modo Demostración</p>
-                        <p className="text-amber-300 text-sm">Las claves de API no están configuradas. Los resultados mostrados son limitados. Configure las API keys en el backend para obtener análisis en vivo contra VirusTotal, MalwareBazaar y otros motores de detección.</p>
+                        <p className="text-amber-200 font-semibold mb-1">Demo Mode</p>
+                        <p className="text-amber-300 text-sm">API keys are not configured. Displayed results are limited. Configure API keys in the backend to get live analysis against VirusTotal, MalwareBazaar and other detection engines.</p>
                     </div>
                 </div>
             )}
