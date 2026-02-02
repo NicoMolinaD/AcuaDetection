@@ -5,12 +5,11 @@ import { sendHeartbeat } from '../services/api';
 // Session configuration
 const HEARTBEAT_INTERVAL = 4 * 60 * 1000; // 4 minutes
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
-const INACTIVITY_WARNING = 14 * 60 * 1000; // 14 minutes (1 min before logout)
 
 export const useSessionTimeout = () => {
     const { logout, token } = useAuth();
-    const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const heartbeatTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const lastActivityRef = useRef<number>(Date.now());
 
     const resetInactivityTimer = useCallback(() => {
